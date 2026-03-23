@@ -146,24 +146,24 @@ export default function Login() {
               <div className="space-y-1.5 text-xs font-mono text-muted-foreground">
                 <button
                   type="button"
-                  onClick={() => { setEmail('joao.silva@famp.edu.br'); setPassword('demo'); }}
+                  onClick={() => { setEmail('everton.e.carvalho@aluno.famp.edu.br'); setPassword(''); }}
                   className="block w-full text-left hover:text-primary transition-colors py-1"
                 >
-                  <span className="text-primary/70">Aluno:</span> joao.silva@famp.edu.br
+                  <span className="text-primary/70">Aluno:</span> everton.e.carvalho@aluno.famp.edu.br
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setEmail('maria.santos@famp.edu.br'); setPassword('demo'); }}
+                  onClick={() => { setEmail('everton.edgar@gmail.com'); setPassword(''); }}
                   className="block w-full text-left hover:text-primary transition-colors py-1"
                 >
-                  <span className="text-primary/70">Professor:</span> maria.santos@famp.edu.br
+                  <span className="text-primary/70">Professor:</span> everton.edgar@gmail.com
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setEmail('coord@famp.edu.br'); setPassword('demo'); }}
+                  onClick={() => { setEmail('edgardecarvalho@fampfaculdade.com.br'); setPassword(''); }}
                   className="block w-full text-left hover:text-primary transition-colors py-1"
                 >
-                  <span className="text-primary/70">Coordenação:</span> coord@famp.edu.br
+                  <span className="text-primary/70">Coordenação:</span> edgardecarvalho@fampfaculdade.com.br
                 </button>
               </div>
             </CardContent>
