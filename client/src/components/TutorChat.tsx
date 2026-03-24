@@ -2,16 +2,17 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Send, AlertCircle, MessageSquarePlus, Sparkles, BookOpen, Stethoscope, Brain, Pill, Copy, Check } from 'lucide-react';
-import { generateTutorResponse, GeminiMessage } from '@/lib/gemini';
+import { Send, AlertCircle, MessageSquarePlus, Sparkles, BookOpen, Stethoscope, Brain, Pill, Copy, Check, GraduationCap } from 'lucide-react';
+import { generateTutorResponse, startGuidedSession, GeminiMessage, TutorMode } from '@/lib/gemini';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 interface TutorChatProps {
   disciplina?: string;
+  mode?: TutorMode;
 }
 
-/* ─── Sugestões de perguntas por disciplina ─── */
+/* ─── Sugestões de perguntas por disciplina (modo chat) ─── */
 interface SuggestionItem {
   icon: React.ReactNode;
   text: string;
@@ -141,6 +142,31 @@ const DISCIPLINA_SUGGESTIONS: Record<string, SuggestionItem[]> = {
   ],
 };
 
+/* ─── Temas para estudo guiado por disciplina ─── */
+const GUIDED_TOPICS: Record<string, string[]> = {
+  'Anatomia Humana': ['Sistema cardiovascular', 'Neuroanatomia', 'Aparelho locomotor', 'Anatomia do abdome'],
+  'Fisiologia': ['Fisiologia cardíaca', 'Fisiologia renal', 'Fisiologia respiratória', 'Neurofisiologia'],
+  'Bioquímica': ['Metabolismo energético', 'Ciclo de Krebs', 'Bioquímica das proteínas', 'Metabolismo lipídico'],
+  'Farmacologia': ['Anti-hipertensivos', 'Antibióticos', 'Anti-inflamatórios', 'Analgésicos e opioides'],
+  'Patologia': ['Inflamação e reparo', 'Neoplasias', 'Distúrbios hemodinâmicos', 'Lesão e morte celular'],
+  'Semiologia Médica': ['Exame cardiovascular', 'Exame do abdome', 'Exame neurológico', 'Exame pulmonar'],
+  'Clínica Médica': ['Hipertensão arterial', 'Diabetes mellitus', 'Insuficiência cardíaca', 'Pneumonias'],
+  'Cirurgia': ['Abdome agudo', 'Trauma (ATLS)', 'Hérnias da parede abdominal', 'Pré e pós-operatório'],
+  'Pediatria': ['Desenvolvimento infantil', 'Doenças respiratórias', 'Imunização', 'Desidratação e reidratação'],
+  'Ginecologia e Obstetrícia': ['Pré-natal', 'Trabalho de parto', 'Síndromes hipertensivas', 'Câncer ginecológico'],
+  'Saúde Coletiva': ['Princípios do SUS', 'Epidemiologia básica', 'Atenção primária', 'Vigilância em saúde'],
+  'Psiquiatria': ['Transtornos do humor', 'Esquizofrenia', 'Transtornos de ansiedade', 'Psicofarmacologia'],
+  'Neurologia': ['AVC', 'Epilepsia', 'Cefaleias', 'Doenças neurodegenerativas'],
+  'Cardiologia': ['Síndromes coronarianas', 'Arritmias', 'Valvopatias', 'Insuficiência cardíaca'],
+  'Pneumologia': ['Asma', 'DPOC', 'Tromboembolismo pulmonar', 'Gasometria arterial'],
+  'Infectologia': ['Tuberculose', 'HIV/AIDS', 'Sepse', 'Infecções urinárias'],
+  'Imunologia': ['Imunidade inata vs adaptativa', 'Hipersensibilidades', 'Autoimunidade', 'Imunodeficiências'],
+  'Histologia e Embriologia': ['Tecidos epiteliais', 'Embriogênese', 'Tecido conjuntivo', 'Tecido nervoso'],
+  'Microbiologia': ['Bacteriologia', 'Virologia', 'Micologia', 'Resistência antimicrobiana'],
+};
+
+const DEFAULT_GUIDED_TOPICS = ['Semiologia cardiovascular', 'Farmacologia clínica', 'Emergências médicas', 'Diagnóstico diferencial'];
+
 /* ─── Indicador de digitando ─── */
 function TypingIndicator() {
   return (
@@ -158,7 +184,7 @@ function TypingIndicator() {
 }
 
 /* ─── Componente principal ─── */
-export default function TutorChat({ disciplina }: TutorChatProps) {
+export default function TutorChat({ disciplina, mode = 'chat' }: TutorChatProps) {
   const [messages, setMessages] = useState<GeminiMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -166,13 +192,14 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const isGuided = mode === 'guided';
+
   const handleCopy = async (text: string, idx: number) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedIdx(idx);
       setTimeout(() => setCopiedIdx(null), 2000);
     } catch {
-      // Fallback para navegadores que não suportam clipboard API
       const textarea = document.createElement('textarea');
       textarea.value = text;
       textarea.style.position = 'fixed';
@@ -193,6 +220,13 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
     return DEFAULT_SUGGESTIONS;
   }, [disciplina]);
 
+  const guidedTopics = useMemo(() => {
+    if (disciplina && GUIDED_TOPICS[disciplina]) {
+      return GUIDED_TOPICS[disciplina];
+    }
+    return DEFAULT_GUIDED_TOPICS;
+  }, [disciplina]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
@@ -201,6 +235,22 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
     setMessages([]);
     setInput('');
     setError(null);
+  };
+
+  /* ─── Iniciar sessão guiada com um tema ─── */
+  const handleStartGuided = async (topic: string) => {
+    if (loading) return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      const response = await startGuidedSession(disciplina, topic);
+      setMessages([{ role: 'model', content: response }]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao iniciar sessão guiada');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const sendMessage = async (text: string) => {
@@ -218,7 +268,7 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
     setLoading(true);
 
     try {
-      const response = await generateTutorResponse(userMessage, messages, disciplina);
+      const response = await generateTutorResponse(userMessage, messages, disciplina, mode);
       setMessages((prev) => [...prev, { role: 'model', content: response }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao gerar resposta do tutor');
@@ -239,17 +289,43 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
     }
   };
 
+  /* ─── Markdown prose classes ─── */
+  const proseClasses = `prose prose-sm prose-invert max-w-none break-words
+    [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-4 [&_h1]:mb-2
+    [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-3 [&_h2]:mb-1.5
+    [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-2.5 [&_h3]:mb-1
+    [&_p]:text-sm [&_p]:text-foreground/90 [&_p]:leading-relaxed [&_p]:my-1.5
+    [&_ul]:text-sm [&_ul]:my-1.5 [&_ul]:pl-4 [&_ul]:text-foreground/90
+    [&_ol]:text-sm [&_ol]:my-1.5 [&_ol]:pl-4 [&_ol]:text-foreground/90
+    [&_li]:my-0.5 [&_li]:text-foreground/90
+    [&_strong]:text-foreground [&_strong]:font-semibold
+    [&_em]:text-foreground/80
+    [&_code]:text-xs [&_code]:bg-background/50 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-primary
+    [&_pre]:bg-background/50 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto
+    [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-3 [&_blockquote]:my-2 [&_blockquote]:text-foreground/70 [&_blockquote]:italic
+    [&_table]:text-xs [&_table]:w-full [&_table]:my-2
+    [&_th]:bg-background/50 [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_th]:border [&_th]:border-border/50
+    [&_td]:px-2 [&_td]:py-1 [&_td]:text-foreground/90 [&_td]:border [&_td]:border-border/50
+    [&_hr]:border-border/30 [&_hr]:my-3
+    [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2`;
+
   return (
     <div className="flex flex-col h-full bg-background rounded-lg border border-border overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-4 flex items-center justify-between shrink-0">
+      <div className={`p-4 flex items-center justify-between shrink-0 ${
+        isGuided
+          ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-white'
+          : 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground'
+      }`}>
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
-            <Sparkles className="w-5 h-5" />
-            FAMP Tutor IA
+            {isGuided ? <GraduationCap className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+            {isGuided ? 'Estudo Guiado' : 'FAMP Tutor IA'}
           </h2>
           <p className="text-sm opacity-90">
-            {disciplina ? `Ajuda com ${disciplina}` : 'Assistente de estudo'}
+            {isGuided
+              ? disciplina ? `Sessão socrática — ${disciplina}` : 'Sessão socrática'
+              : disciplina ? `Ajuda com ${disciplina}` : 'Assistente de estudo'}
           </p>
         </div>
         <Button
@@ -266,40 +342,62 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
 
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Tela de boas-vindas com sugestões */}
+        {/* Tela de boas-vindas */}
         {messages.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center h-full gap-6">
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="w-8 h-8 text-primary" />
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                isGuided ? 'bg-amber-500/10' : 'bg-primary/10'
+              }`}>
+                {isGuided
+                  ? <GraduationCap className="w-8 h-8 text-amber-500" />
+                  : <Sparkles className="w-8 h-8 text-primary" />}
               </div>
-              <p className="text-lg font-semibold text-foreground mb-1">Bem-vindo ao FAMP Tutor IA</p>
+              <p className="text-lg font-semibold text-foreground mb-1">
+                {isGuided ? 'Estudo Guiado' : 'Bem-vindo ao FAMP Tutor IA'}
+              </p>
               <p className="text-sm text-muted-foreground max-w-md">
-                Faça suas dúvidas sobre conceitos médicos e receba ajuda personalizada.
-                {disciplina && <> Estou pronto para ajudar com <strong>{disciplina}</strong>.</>}
+                {isGuided
+                  ? <>Escolha um tema abaixo e o tutor conduzirá uma sessão de perguntas para testar e aprofundar seu conhecimento{disciplina && <> em <strong>{disciplina}</strong></>}.</>
+                  : <>Faça suas dúvidas sobre conceitos médicos e receba ajuda personalizada.{disciplina && <> Estou pronto para ajudar com <strong>{disciplina}</strong>.</>}</>}
               </p>
             </div>
 
-            {/* Sugestões de perguntas */}
+            {/* Sugestões / Temas */}
             <div className="w-full max-w-lg">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3 text-center font-medium">
-                Sugestões para começar
+                {isGuided ? 'Escolha um tema para começar' : 'Sugestões para começar'}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {suggestions.map((s, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSuggestionClick(s.text)}
-                    className="flex items-start gap-2.5 p-3 rounded-lg border border-border/60 bg-card/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-200 text-left group cursor-pointer"
-                  >
-                    <span className="text-primary/70 group-hover:text-primary mt-0.5 shrink-0 transition-colors">
-                      {s.icon}
-                    </span>
-                    <span className="text-xs text-muted-foreground group-hover:text-foreground leading-relaxed transition-colors">
-                      {s.text}
-                    </span>
-                  </button>
-                ))}
+                {isGuided
+                  ? guidedTopics.map((topic, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleStartGuided(topic)}
+                        className="flex items-start gap-2.5 p-3 rounded-lg border border-border/60 bg-card/50 hover:bg-amber-500/5 hover:border-amber-500/30 transition-all duration-200 text-left group cursor-pointer"
+                      >
+                        <span className="text-amber-500/70 group-hover:text-amber-500 mt-0.5 shrink-0 transition-colors">
+                          <GraduationCap className="w-4 h-4" />
+                        </span>
+                        <span className="text-xs text-muted-foreground group-hover:text-foreground leading-relaxed transition-colors">
+                          {topic}
+                        </span>
+                      </button>
+                    ))
+                  : suggestions.map((s, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSuggestionClick(s.text)}
+                        className="flex items-start gap-2.5 p-3 rounded-lg border border-border/60 bg-card/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-200 text-left group cursor-pointer"
+                      >
+                        <span className="text-primary/70 group-hover:text-primary mt-0.5 shrink-0 transition-colors">
+                          {s.icon}
+                        </span>
+                        <span className="text-xs text-muted-foreground group-hover:text-foreground leading-relaxed transition-colors">
+                          {s.text}
+                        </span>
+                      </button>
+                    ))}
               </div>
             </div>
           </div>
@@ -318,7 +416,7 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
                   : 'bg-muted/60 backdrop-blur-sm text-foreground rounded-bl-sm border border-border/50'
               }`}
             >
-              {/* Botão Copiar — apenas nas respostas do tutor */}
+              {/* Botão Copiar */}
               {msg.role === 'model' && (
                 <button
                   onClick={() => handleCopy(msg.content, idx)}
@@ -335,25 +433,7 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
               {msg.role === 'user' ? (
                 <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
               ) : (
-                <div className="prose prose-sm prose-invert max-w-none break-words
-                  [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-4 [&_h1]:mb-2
-                  [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-3 [&_h2]:mb-1.5
-                  [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-2.5 [&_h3]:mb-1
-                  [&_p]:text-sm [&_p]:text-foreground/90 [&_p]:leading-relaxed [&_p]:my-1.5
-                  [&_ul]:text-sm [&_ul]:my-1.5 [&_ul]:pl-4 [&_ul]:text-foreground/90
-                  [&_ol]:text-sm [&_ol]:my-1.5 [&_ol]:pl-4 [&_ol]:text-foreground/90
-                  [&_li]:my-0.5 [&_li]:text-foreground/90
-                  [&_strong]:text-foreground [&_strong]:font-semibold
-                  [&_em]:text-foreground/80
-                  [&_code]:text-xs [&_code]:bg-background/50 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-primary
-                  [&_pre]:bg-background/50 [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto
-                  [&_blockquote]:border-l-2 [&_blockquote]:border-primary/40 [&_blockquote]:pl-3 [&_blockquote]:my-2 [&_blockquote]:text-foreground/70 [&_blockquote]:italic
-                  [&_table]:text-xs [&_table]:w-full [&_table]:my-2
-                  [&_th]:bg-background/50 [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_th]:border [&_th]:border-border/50
-                  [&_td]:px-2 [&_td]:py-1 [&_td]:text-foreground/90 [&_td]:border [&_td]:border-border/50
-                  [&_hr]:border-border/30 [&_hr]:my-3
-                  [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2
-                ">
+                <div className={proseClasses}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {msg.content}
                   </ReactMarkdown>
@@ -387,7 +467,15 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
         <div className="flex gap-2">
           <Input
             type="text"
-            placeholder={loading ? 'Aguarde a resposta...' : 'Digite sua dúvida...'}
+            placeholder={
+              loading
+                ? 'Aguarde a resposta...'
+                : isGuided && messages.length === 0
+                  ? 'Ou digite um tema personalizado...'
+                  : isGuided
+                    ? 'Digite sua resposta...'
+                    : 'Digite sua dúvida...'
+            }
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -395,7 +483,14 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
             className="flex-1"
           />
           <Button
-            onClick={handleSendMessage}
+            onClick={() => {
+              if (isGuided && messages.length === 0 && input.trim()) {
+                handleStartGuided(input.trim());
+                setInput('');
+              } else {
+                handleSendMessage();
+              }
+            }}
             disabled={loading || !input.trim()}
             className="gap-2"
           >
