@@ -18,7 +18,6 @@ import Dashboard from "./pages/Dashboard";
 import AccessDenied from "./pages/AccessDenied";
 import {
   PlannerPage,
-  QuestPage,
   LibraryPage,
   CadernoErrosPage,
   FlashcardsPage,
@@ -26,6 +25,7 @@ import {
   TurmasPage,
   AvisosPage,
 } from "./pages/ModulePlaceholder";
+import QuestPage from "./pages/QuestPage";
 import TutorPage from "./pages/TutorPage";
 
 function Router() {
