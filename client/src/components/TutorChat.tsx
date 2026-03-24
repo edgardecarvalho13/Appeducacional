@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Send, AlertCircle, MessageSquarePlus, Sparkles, BookOpen, Stethoscope, Brain, Pill } from 'lucide-react';
+import { Send, AlertCircle, MessageSquarePlus, Sparkles, BookOpen, Stethoscope, Brain, Pill, Copy, Check } from 'lucide-react';
 import { generateTutorResponse, GeminiMessage } from '@/lib/gemini';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -67,6 +67,78 @@ const DISCIPLINA_SUGGESTIONS: Record<string, SuggestionItem[]> = {
     { icon: <Pill className="w-4 h-4" />, text: 'Qual o tratamento da epilepsia refratária?' },
     { icon: <BookOpen className="w-4 h-4" />, text: 'Como diferenciar AVC isquêmico de hemorrágico?' },
   ],
+  'Bioquímica': [
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Explique as etapas do ciclo de Krebs e sua importância' },
+    { icon: <Brain className="w-4 h-4" />, text: 'Qual a diferença entre glicólise aeróbica e anaeróbica?' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Como funciona a cadeia transportadora de elétrons?' },
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Explique o metabolismo dos aminoácidos e o ciclo da ureia' },
+  ],
+  'Patologia': [
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Quais são os mecanismos de lesão celular reversível e irreversível?' },
+    { icon: <Brain className="w-4 h-4" />, text: 'Explique a diferença entre necrose e apoptose' },
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Como ocorre o processo de inflamação aguda?' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Quais são as características das neoplasias benignas e malignas?' },
+  ],
+  'Semiologia Médica': [
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Como realizar a ausculta cardíaca e identificar sopros?' },
+    { icon: <Brain className="w-4 h-4" />, text: 'Quais são os sinais semiológicos de derrame pleural?' },
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Explique a técnica de palpação abdominal e seus achados' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Como avaliar o estado neurológico de um paciente?' },
+  ],
+  'Cirurgia': [
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Quais são as indicações de apendicectomia de urgência?' },
+    { icon: <Brain className="w-4 h-4" />, text: 'Explique a classificação de Hinchey para diverticulite' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Qual o manejo inicial do abdome agudo?' },
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Como avaliar e tratar um paciente politraumatizado (ATLS)?' },
+  ],
+  'Ginecologia e Obstetrícia': [
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Quais são os critérios para diagnóstico de pré-eclâmpsia?' },
+    { icon: <Brain className="w-4 h-4" />, text: 'Explique as fases do trabalho de parto e suas durações' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Qual o rastreamento recomendado para câncer de colo uterino?' },
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Como manejar diabetes gestacional?' },
+  ],
+  'Saúde Coletiva': [
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Quais são os princípios e diretrizes do SUS?' },
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Explique a diferença entre incidência e prevalência' },
+    { icon: <Brain className="w-4 h-4" />, text: 'Como funciona a Estratégia Saúde da Família (ESF)?' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Quais são os tipos de estudos epidemiológicos?' },
+  ],
+  'Psiquiatria': [
+    { icon: <Brain className="w-4 h-4" />, text: 'Quais são os critérios diagnósticos do transtorno depressivo maior?' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Compare os mecanismos de ação dos ISRS e dos tricíclicos' },
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Como avaliar risco de suicídio em um paciente?' },
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Explique a diferença entre esquizofrenia e transtorno bipolar' },
+  ],
+  'Pneumologia': [
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Como classificar a gravidade da asma?' },
+    { icon: <Brain className="w-4 h-4" />, text: 'Explique a fisiopatologia da DPOC' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Qual o tratamento do tromboembolismo pulmonar?' },
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Como interpretar uma gasometria arterial?' },
+  ],
+  'Infectologia': [
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Qual o esquema de tratamento para tuberculose pulmonar?' },
+    { icon: <Brain className="w-4 h-4" />, text: 'Explique a fisiopatologia da sepse e o protocolo de manejo' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Como escolher o antibiótico empírico para infecção urinária?' },
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Quais são as indicações de profilaxia pós-exposição ao HIV?' },
+  ],
+  'Imunologia': [
+    { icon: <Brain className="w-4 h-4" />, text: 'Explique a diferença entre imunidade inata e adaptativa' },
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Como funcionam as reações de hipersensibilidade tipo I a IV?' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Qual o papel dos linfócitos T CD4+ e CD8+?' },
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Explique o mecanismo de ação das vacinas de mRNA' },
+  ],
+  'Histologia e Embriologia': [
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Quais são os tipos de tecido epitelial e suas funções?' },
+    { icon: <Brain className="w-4 h-4" />, text: 'Explique a embriogênese do coração e seus defeitos congênitos' },
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Qual a diferença entre os tipos de tecido conjuntivo?' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Como ocorre a gastrulação e a formação dos folhetos embrionários?' },
+  ],
+  'Microbiologia': [
+    { icon: <Stethoscope className="w-4 h-4" />, text: 'Quais são os mecanismos de resistência bacteriana aos antibióticos?' },
+    { icon: <Brain className="w-4 h-4" />, text: 'Explique a diferença entre bactérias Gram-positivas e Gram-negativas' },
+    { icon: <Pill className="w-4 h-4" />, text: 'Como funcionam os mecanismos de patogenicidade viral?' },
+    { icon: <BookOpen className="w-4 h-4" />, text: 'Quais são os principais fungos causadores de micoses sistêmicas?' },
+  ],
 };
 
 /* ─── Indicador de digitando ─── */
@@ -91,7 +163,28 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleCopy = async (text: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    } catch {
+      // Fallback para navegadores que não suportam clipboard API
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    }
+  };
 
   const suggestions = useMemo(() => {
     if (disciplina && DISCIPLINA_SUGGESTIONS[disciplina]) {
@@ -219,12 +312,26 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] lg:max-w-[75%] px-4 py-3 rounded-2xl ${
+              className={`relative group max-w-[85%] lg:max-w-[75%] px-4 py-3 rounded-2xl ${
                 msg.role === 'user'
                   ? 'bg-primary text-primary-foreground rounded-br-sm'
                   : 'bg-muted/60 backdrop-blur-sm text-foreground rounded-bl-sm border border-border/50'
               }`}
             >
+              {/* Botão Copiar — apenas nas respostas do tutor */}
+              {msg.role === 'model' && (
+                <button
+                  onClick={() => handleCopy(msg.content, idx)}
+                  className="absolute top-2 right-2 p-1.5 rounded-md bg-background/60 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-background/90 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer"
+                  title={copiedIdx === idx ? 'Copiado!' : 'Copiar resposta'}
+                >
+                  {copiedIdx === idx ? (
+                    <Check className="w-3.5 h-3.5 text-green-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              )}
               {msg.role === 'user' ? (
                 <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
               ) : (
