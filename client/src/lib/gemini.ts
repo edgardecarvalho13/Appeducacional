@@ -11,7 +11,7 @@ const client = new GoogleGenAI({
 });
 
 export interface GeminiMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'model';
   content: string;
 }
 

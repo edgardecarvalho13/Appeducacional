@@ -48,7 +48,7 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
       // Adicionar resposta do assistente
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: response },
+        { role: 'model', content: response },
       ]);
     } catch (err) {
       setError(
