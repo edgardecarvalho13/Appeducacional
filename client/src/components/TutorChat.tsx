@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Loader2, Send, AlertCircle } from 'lucide-react';
+import { Loader2, Send, AlertCircle, MessageSquarePlus } from 'lucide-react';
 import { generateTutorResponse, GeminiMessage } from '@/lib/gemini';
 
 interface TutorChatProps {
@@ -20,6 +20,12 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setInput('');
+    setError(null);
+  };
 
   const handleSendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -71,11 +77,23 @@ export default function TutorChat({ disciplina }: TutorChatProps) {
   return (
     <div className="flex flex-col h-full bg-background rounded-lg border border-border">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-4 rounded-t-lg">
-        <h2 className="text-xl font-bold">FAMP Tutor IA</h2>
-        <p className="text-sm opacity-90">
-          {disciplina ? `Ajuda com ${disciplina}` : 'Assistente de estudo'}
-        </p>
+      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-4 rounded-t-lg flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">FAMP Tutor IA</h2>
+          <p className="text-sm opacity-90">
+            {disciplina ? `Ajuda com ${disciplina}` : 'Assistente de estudo'}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleNewChat}
+          disabled={loading || messages.length === 0}
+          className="gap-1.5 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+        >
+          <MessageSquarePlus className="w-4 h-4" />
+          <span className="hidden sm:inline">Novo Chat</span>
+        </Button>
       </div>
 
       {/* Messages Container */}
