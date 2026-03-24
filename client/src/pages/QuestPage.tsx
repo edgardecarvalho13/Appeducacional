@@ -98,9 +98,12 @@ export default function QuestPage() {
     return Array.from(set).sort();
   }, [selectedArea, selectedSubarea, questions]);
   const dificuldades = useMemo(() => getUniqueValues(questions, 'dificuldade'), [questions]);
-  const blooms = useMemo(() => getUniqueValues(questions, 'nivel_bloom'), [questions]);
-  const periodos = useMemo(() => getUniqueValues(questions, 'periodo'), [questions]);
-  const competencias = useMemo(() => getUniqueValues(questions, 'competencias'), [questions]);
+  // Bloom: 6 níveis fixos conforme taxonomia de Bloom
+  const blooms = useMemo(() => ['Lembrar', 'Compreender', 'Aplicar', 'Analisar', 'Avaliar', 'Criar'], []);
+  // Períodos: 1º ao 8º
+  const periodos = useMemo(() => ['1º', '2º', '3º', '4º', '5º', '6º', '7º', '8º'], []);
+  // Competências fixas
+  const competencias = useMemo(() => ['Atenção à Saúde', 'Tomada de Decisões', 'Comunicação', 'Liderança', 'Gerenciamento e Administração', 'Formação Continuada'], []);
 
   // Filtered questions
   const filteredQuestions = useMemo(() => {
@@ -119,11 +122,6 @@ export default function QuestPage() {
   }, [questions, selectedArea, selectedSubarea, selectedTema, selectedDificuldade, selectedBloom, selectedPeriodo, selectedCompetencia, showOnlyUnanswered, showOnlyWrong, progress]);
 
   const currentQuestion = filteredQuestions[currentQuestionIdx];
-
-  // Stats
-  const totalAnswered = stats.totalAnswered;
-  const totalCorrect = stats.totalCorrect;
-  const accuracy = stats.accuracy;
 
   // Handlers
   const clearFilters = useCallback(() => {
@@ -238,38 +236,6 @@ export default function QuestPage() {
           >
             <Upload className="w-3.5 h-3.5" /> Importar
           </Button>
-        </div>
-      </div>
-
-      {/* Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="bg-card border border-border rounded-lg p-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <FileQuestion className="w-3.5 h-3.5" />
-            Total
-          </div>
-          <p className="text-xl font-bold text-foreground" style={{ fontFamily: 'var(--font-display)' }}>{questions.length}</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <Target className="w-3.5 h-3.5" />
-            Resolvidas
-          </div>
-          <p className="text-xl font-bold text-foreground" style={{ fontFamily: 'var(--font-display)' }}>{totalAnswered}</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <Trophy className="w-3.5 h-3.5" />
-            Acertos
-          </div>
-          <p className="text-xl font-bold text-green-400" style={{ fontFamily: 'var(--font-display)' }}>{totalCorrect}</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <Brain className="w-3.5 h-3.5" />
-            Aproveitamento
-          </div>
-          <p className="text-xl font-bold text-primary" style={{ fontFamily: 'var(--font-display)' }}>{accuracy}%</p>
         </div>
       </div>
 

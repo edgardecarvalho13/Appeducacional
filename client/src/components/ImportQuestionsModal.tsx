@@ -39,12 +39,16 @@ const COLUMN_MAP: Record<string, keyof Question> = {
   'curso': 'prova',
   'area': 'area',
   'área': 'area',
+  'grande area': 'area',
+  'grande área': 'area',
   'subarea': 'subarea',
   'subárea': 'subarea',
   'sub-area': 'subarea',
   'sub-área': 'subarea',
+  'especialidade': 'subarea',
   'conteudo': 'conteudo',
   'conteúdo': 'conteudo',
+  'tema': 'conteudo',
   'nivel_bloom': 'nivel_bloom',
   'nível cognitivo bloom': 'nivel_bloom',
   'nivelcognitivobloom': 'nivel_bloom',
@@ -150,7 +154,7 @@ export default function ImportQuestionsModal({ isOpen, onClose, onImport }: Impo
 
       // Check required fields
       const mappedFields = new Set(Object.values(headerMap));
-      if (!mappedFields.has('area')) errs.push('Coluna "Área" não encontrada');
+      if (!mappedFields.has('area')) errs.push('Coluna "Grande Área" não encontrada');
       if (!mappedFields.has('gabarito')) errs.push('Coluna "Gabarito" não encontrada');
 
       // Parse questions
@@ -241,8 +245,8 @@ export default function ImportQuestionsModal({ isOpen, onClose, onImport }: Impo
   }, [parsedQuestions, onImport]);
 
   const downloadTemplate = useCallback(() => {
-    const headers = ['Questão', 'Ano', 'Prova', 'Área', 'Subárea', 'Conteúdo', 'Nível Cognitivo Bloom', 'Objetivo de Aprendizagem', 'Dificuldade', 'Fonte/Diretriz/Protocolo', 'Competências', 'Período', 'Enunciado', 'Alternativa_A', 'Alternativa_B', 'Alternativa_C', 'Alternativa_D', 'Gabarito'];
-    const example = ['1', '2025', 'Prova Exemplo', 'Clínica Médica', 'Cardiologia', 'Insuficiência cardíaca', 'Aplicar', 'Identificar tratamento adequado', 'Média', 'Diretriz SBC 2021', 'Tomada de Decisão', '5º', 'Paciente de 60 anos...', 'Carvedilol', 'Anlodipino', 'Digoxina', 'Hidroclorotiazida', 'A'];
+    const headers = ['Questão', 'Ano', 'Prova', 'Grande Área', 'Especialidade', 'Tema', 'Nível Cognitivo Bloom', 'Objetivo de Aprendizagem', 'Dificuldade', 'Fonte/Diretriz/Protocolo', 'Competências', 'Período', 'Enunciado', 'Alternativa_A', 'Alternativa_B', 'Alternativa_C', 'Alternativa_D', 'Gabarito'];
+    const example = ['1', '2025', 'Prova Exemplo', 'Clínica Médica', 'Cardiologia', 'Insuficiência cardíaca', 'Aplicar', 'Identificar tratamento adequado', 'Média', 'Diretriz SBC 2021', 'Tomada de Decisões', '5º', 'Paciente de 60 anos...', 'Carvedilol', 'Anlodipino', 'Digoxina', 'Hidroclorotiazida', 'A'];
     const csv = [headers.join(','), example.join(',')].join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -311,7 +315,7 @@ export default function ImportQuestionsModal({ isOpen, onClose, onImport }: Impo
 
               <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
                 <p className="text-xs text-muted-foreground mb-2">
-                  O arquivo deve conter colunas como: Questão, Área, Subárea, Conteúdo, Dificuldade, Enunciado, Alternativa_A, Alternativa_B, Alternativa_C, Alternativa_D, Gabarito.
+                  O arquivo deve conter colunas como: Questão, Grande Área, Especialidade, Tema, Dificuldade, Enunciado, Alternativa_A, Alternativa_B, Alternativa_C, Alternativa_D, Gabarito.
                 </p>
                 <Button variant="outline" size="sm" onClick={downloadTemplate} className="text-xs gap-1.5">
                   <Download className="w-3 h-3" />
@@ -355,8 +359,8 @@ export default function ImportQuestionsModal({ isOpen, onClose, onImport }: Impo
                     <thead className="bg-muted/50 sticky top-0">
                       <tr>
                         <th className="text-left p-2 text-muted-foreground font-mono">#</th>
-                        <th className="text-left p-2 text-muted-foreground font-mono">Área</th>
-                        <th className="text-left p-2 text-muted-foreground font-mono">Subárea</th>
+<th className="text-left p-2 text-muted-foreground font-mono">Grande Área</th>
+                         <th className="text-left p-2 text-muted-foreground font-mono">Especialidade</th>
                         <th className="text-left p-2 text-muted-foreground font-mono">Dificuldade</th>
                         <th className="text-left p-2 text-muted-foreground font-mono">Gabarito</th>
                         <th className="text-left p-2 text-muted-foreground font-mono">Enunciado</th>

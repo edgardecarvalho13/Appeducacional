@@ -38,14 +38,15 @@ import { toast } from 'sonner';
 
 /* ─── Grandes Áreas disponíveis para entrada manual ─── */
 const GRANDES_AREAS = [
-  'Clínica Médica',
   'Cirurgia',
-  'Pediatria',
-  'Ginecologia e Obstetrícia',
-  'Psiquiatria',
-  'Saúde Coletiva',
+  'Clínica Médica',
+  'Ginecologia',
   'Medicina de Família e Comunidade',
   'Medicina do Trabalho',
+  'Obstetrícia',
+  'Pediatria',
+  'Psiquiatria',
+  'Saúde Coletiva',
 ];
 
 export default function CadernoErrosPage() {
