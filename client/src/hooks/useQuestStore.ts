@@ -2,6 +2,11 @@
  * FAMP Quest — Centralized Store
  * Manages questions, progress, and caderno de erros in localStorage.
  * Shared across QuestPage, CadernoErrosPage, and DesempenhoPage.
+ *
+ * TERMINOLOGIA:
+ *   area      = Grande Área (ex: Clínica Médica, Cirurgia, Pediatria)
+ *   subarea   = Especialidade (ex: Cardiologia, Nefrologia)
+ *   conteudo  = Tema (ex: Insuficiência cardíaca, Acidose tubular renal)
  */
 
 import { useState, useCallback, useMemo } from 'react';
@@ -11,9 +16,9 @@ export interface Question {
   id: number;
   ano: number;
   prova: string;
-  area: string;
-  subarea: string;
-  conteudo: string;
+  area: string;       // Grande Área
+  subarea: string;     // Especialidade
+  conteudo: string;    // Tema
   nivel_bloom: string;
   objetivo: string;
   dificuldade: string;
@@ -32,17 +37,28 @@ export interface QuestionProgress {
   answeredAt: string;
 }
 
+/* ─── Taxonomia de Erros C1-C4 ─── */
+export type TaxonomiaErro = 'C1' | 'C2' | 'C3' | 'C4' | null;
+
+export const TAXONOMIA_LABELS: Record<string, { nome: string; descricao: string }> = {
+  C1: { nome: 'Conceitual/algoritmo', descricao: 'Não sabia regra/critério/conduta, confundiu indicações/contraindicações.' },
+  C2: { nome: 'Discriminação clínica', descricao: 'Confundiu quadros parecidos (ex.: hipóxia pós-intubação vs outras causas).' },
+  C3: { nome: 'Atenção/leitura', descricao: 'Leu errado o enunciado, não viu "EXCETO", trocou alternativa.' },
+  C4: { nome: 'Estratégia de prova', descricao: 'Tempo, alternativas, chute sem eliminação, excesso de confiança.' },
+};
+
 export interface CadernoErroEntry {
   id: string;
   questionId: number;
-  area: string;
-  subarea: string;
+  area: string;             // Grande Área
+  subarea: string;          // Especialidade
   enunciado: string;
-  respostaCerta: string;
+  respostaCerta: string;    // Letra (A, B, C, D)
   respostaCertaTexto: string;
   anotacao: string;
   dataResposta: string;
   revisado: boolean;
+  taxonomia: TaxonomiaErro; // C1, C2, C3, C4 ou null
 }
 
 /* ─── Storage Keys ─── */
@@ -77,7 +93,6 @@ export function useQuestStore() {
   const allQuestions = useMemo(() => {
     const base = defaultQuestions as Question[];
     const maxBaseId = Math.max(...base.map(q => q.id), 0);
-    // Re-index imported questions to avoid ID collisions
     const imported = importedQuestions.map((q, i) => ({
       ...q,
       id: q.id > maxBaseId ? q.id : maxBaseId + i + 1,
@@ -127,6 +142,7 @@ export function useQuestStore() {
             anotacao: '',
             dataResposta: new Date().toISOString(),
             revisado: false,
+            taxonomia: null,
           };
           const updated = [newEntry, ...cadernoErros];
           setCadernoErros(updated);
@@ -158,6 +174,14 @@ export function useQuestStore() {
     saveToStorage(CADERNO_KEY, updated);
   }, [cadernoErros]);
 
+  const updateCadernoTaxonomia = useCallback((entryId: string, taxonomia: TaxonomiaErro) => {
+    const updated = cadernoErros.map(e =>
+      e.id === entryId ? { ...e, taxonomia } : e
+    );
+    setCadernoErros(updated);
+    saveToStorage(CADERNO_KEY, updated);
+  }, [cadernoErros]);
+
   const toggleCadernoRevisado = useCallback((entryId: string) => {
     const updated = cadernoErros.map(e =>
       e.id === entryId ? { ...e, revisado: !e.revisado } : e
@@ -179,7 +203,7 @@ export function useQuestStore() {
     const totalWrong = totalAnswered - totalCorrect;
     const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
 
-    // By area
+    // By Grande Área
     const byArea: Record<string, { total: number; answered: number; correct: number }> = {};
     allQuestions.forEach(q => {
       if (!byArea[q.area]) byArea[q.area] = { total: 0, answered: 0, correct: 0 };
@@ -190,7 +214,7 @@ export function useQuestStore() {
       }
     });
 
-    // By subarea
+    // By Especialidade
     const bySubarea: Record<string, { total: number; answered: number; correct: number }> = {};
     allQuestions.forEach(q => {
       if (!bySubarea[q.subarea]) bySubarea[q.subarea] = { total: 0, answered: 0, correct: 0 };
@@ -260,6 +284,7 @@ export function useQuestStore() {
     saveAnswer,
     importQuestions,
     updateCadernoAnotacao,
+    updateCadernoTaxonomia,
     toggleCadernoRevisado,
     removeCadernoEntry,
   };

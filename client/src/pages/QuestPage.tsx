@@ -1,8 +1,14 @@
 /**
  * FAMP Quest — Banco de Questões
  * Design: Command Center dark theme with teal accent.
- * Features: Filtros avançados, resolução interativa, progresso salvo em localStorage,
+ * Features: Filtros avançados (Grande Área, Especialidade, Tema, Dificuldade, Bloom, Período),
+ *           resolução interativa SEM indicadores visíveis, progresso salvo em localStorage,
  *           importação CSV/XLSX, integração com Caderno de Erros.
+ *
+ * TERMINOLOGIA:
+ *   area      = Grande Área
+ *   subarea   = Especialidade
+ *   conteudo  = Tema
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -41,19 +47,6 @@ import { toast } from 'sonner';
 
 type ViewMode = 'filters' | 'list' | 'question';
 
-const DIFFICULTY_COLORS: Record<string, string> = {
-  'Fácil': 'bg-green-500/20 text-green-400 border-green-500/30',
-  'Média': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  'Difícil': 'bg-red-500/20 text-red-400 border-red-500/30',
-};
-
-const BLOOM_COLORS: Record<string, string> = {
-  'Lembrar': 'bg-blue-500/20 text-blue-400',
-  'Compreender': 'bg-cyan-500/20 text-cyan-400',
-  'Aplicar': 'bg-teal-500/20 text-teal-400',
-  'Analisar': 'bg-purple-500/20 text-purple-400',
-};
-
 function getUniqueValues(questions: Question[], key: keyof Question): string[] {
   const set = new Set<string>();
   questions.forEach((q) => {
@@ -73,6 +66,7 @@ export default function QuestPage() {
   // Filter state
   const [selectedArea, setSelectedArea] = useState<string>('');
   const [selectedSubarea, setSelectedSubarea] = useState<string>('');
+  const [selectedTema, setSelectedTema] = useState<string>('');
   const [selectedDificuldade, setSelectedDificuldade] = useState<string>('');
   const [selectedBloom, setSelectedBloom] = useState<string>('');
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>('');
@@ -95,6 +89,14 @@ export default function QuestPage() {
     questions.filter(q => q.area === selectedArea).forEach(q => set.add(q.subarea));
     return Array.from(set).sort();
   }, [selectedArea, questions]);
+  const temas = useMemo(() => {
+    let filtered = questions;
+    if (selectedArea) filtered = filtered.filter(q => q.area === selectedArea);
+    if (selectedSubarea) filtered = filtered.filter(q => q.subarea === selectedSubarea);
+    const set = new Set<string>();
+    filtered.forEach(q => { if (q.conteudo) set.add(q.conteudo); });
+    return Array.from(set).sort();
+  }, [selectedArea, selectedSubarea, questions]);
   const dificuldades = useMemo(() => getUniqueValues(questions, 'dificuldade'), [questions]);
   const blooms = useMemo(() => getUniqueValues(questions, 'nivel_bloom'), [questions]);
   const periodos = useMemo(() => getUniqueValues(questions, 'periodo'), [questions]);
@@ -105,6 +107,7 @@ export default function QuestPage() {
     return questions.filter((q) => {
       if (selectedArea && q.area !== selectedArea) return false;
       if (selectedSubarea && q.subarea !== selectedSubarea) return false;
+      if (selectedTema && q.conteudo !== selectedTema) return false;
       if (selectedDificuldade && q.dificuldade !== selectedDificuldade) return false;
       if (selectedBloom && q.nivel_bloom !== selectedBloom) return false;
       if (selectedPeriodo && q.periodo !== selectedPeriodo) return false;
@@ -113,7 +116,7 @@ export default function QuestPage() {
       if (showOnlyWrong && (!progress[q.id] || progress[q.id].isCorrect !== false)) return false;
       return true;
     });
-  }, [questions, selectedArea, selectedSubarea, selectedDificuldade, selectedBloom, selectedPeriodo, selectedCompetencia, showOnlyUnanswered, showOnlyWrong, progress]);
+  }, [questions, selectedArea, selectedSubarea, selectedTema, selectedDificuldade, selectedBloom, selectedPeriodo, selectedCompetencia, showOnlyUnanswered, showOnlyWrong, progress]);
 
   const currentQuestion = filteredQuestions[currentQuestionIdx];
 
@@ -126,6 +129,7 @@ export default function QuestPage() {
   const clearFilters = useCallback(() => {
     setSelectedArea('');
     setSelectedSubarea('');
+    setSelectedTema('');
     setSelectedDificuldade('');
     setSelectedBloom('');
     setSelectedPeriodo('');
@@ -197,7 +201,7 @@ export default function QuestPage() {
     setViewMode('question');
   }, []);
 
-  const activeFilterCount = [selectedArea, selectedSubarea, selectedDificuldade, selectedBloom, selectedPeriodo, selectedCompetencia].filter(Boolean).length
+  const activeFilterCount = [selectedArea, selectedSubarea, selectedTema, selectedDificuldade, selectedBloom, selectedPeriodo, selectedCompetencia].filter(Boolean).length
     + (showOnlyUnanswered ? 1 : 0) + (showOnlyWrong ? 1 : 0);
 
   // ─── RENDER: Filters Panel ───
@@ -291,25 +295,36 @@ export default function QuestPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Área</label>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Grande Área</label>
               <select
                 value={selectedArea}
-                onChange={(e) => { setSelectedArea(e.target.value); setSelectedSubarea(''); }}
+                onChange={(e) => { setSelectedArea(e.target.value); setSelectedSubarea(''); setSelectedTema(''); }}
                 className="w-full h-9 rounded-md border border-border bg-background px-3 text-xs text-foreground focus:ring-1 focus:ring-primary"
               >
-                <option value="">Todas as áreas</option>
+                <option value="">Todas as grandes áreas</option>
                 {areas.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Subárea</label>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Especialidade</label>
               <select
                 value={selectedSubarea}
-                onChange={(e) => setSelectedSubarea(e.target.value)}
+                onChange={(e) => { setSelectedSubarea(e.target.value); setSelectedTema(''); }}
                 className="w-full h-9 rounded-md border border-border bg-background px-3 text-xs text-foreground focus:ring-1 focus:ring-primary"
               >
-                <option value="">Todas as subáreas</option>
+                <option value="">Todas as especialidades</option>
                 {subareas.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Tema</label>
+              <select
+                value={selectedTema}
+                onChange={(e) => setSelectedTema(e.target.value)}
+                className="w-full h-9 rounded-md border border-border bg-background px-3 text-xs text-foreground focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Todos os temas</option>
+                {temas.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
@@ -432,7 +447,7 @@ export default function QuestPage() {
           return (
             <button
               key={area}
-              onClick={() => { setSelectedArea(area); setSelectedSubarea(''); }}
+              onClick={() => { setSelectedArea(area); setSelectedSubarea(''); setSelectedTema(''); }}
               className={`text-left p-3 rounded-lg border transition-all hover:border-primary/40 ${
                 selectedArea === area ? 'border-primary bg-primary/5' : 'border-border bg-card'
               }`}
@@ -493,17 +508,10 @@ export default function QuestPage() {
               className="w-full text-left p-3 rounded-lg border border-border bg-card hover:border-primary/40 transition-all flex items-start gap-3"
             >
               <div className="shrink-0 w-8 h-8 rounded-md bg-background border border-border flex items-center justify-center text-xs font-mono text-muted-foreground">
-                {q.id}
+                {idx + 1}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-foreground line-clamp-2 mb-1">{q.enunciado.slice(0, 150)}...</p>
-                <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">{q.area}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{q.subarea}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded border ${DIFFICULTY_COLORS[q.dificuldade] || 'border-border text-muted-foreground'}`}>
-                    {q.dificuldade}
-                  </span>
-                </div>
               </div>
               <div className="shrink-0">
                 {p ? (
@@ -524,6 +532,8 @@ export default function QuestPage() {
   );
 
   // ─── RENDER: Question View ───
+  // IMPORTANTE: Não mostrar indicadores (área, especialidade, dificuldade, bloom, período, número)
+  // Apenas enunciado + alternativas. Indicadores ficam SOMENTE nos filtros.
   const renderQuestion = () => {
     if (!currentQuestion) {
       return (
@@ -542,7 +552,7 @@ export default function QuestPage() {
 
     return (
       <div className="p-5 max-w-3xl mx-auto">
-        {/* Navigation bar */}
+        {/* Navigation bar — apenas navegação, sem indicadores */}
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => setViewMode('filters')}
@@ -583,29 +593,9 @@ export default function QuestPage() {
           />
         </div>
 
-        {/* Metadata tags */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
-            Q{currentQuestion.id}
-          </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-            {currentQuestion.area}
-          </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-            {currentQuestion.subarea}
-          </span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${DIFFICULTY_COLORS[currentQuestion.dificuldade] || ''}`}>
-            {currentQuestion.dificuldade}
-          </span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full ${BLOOM_COLORS[currentQuestion.nivel_bloom] || 'bg-muted text-muted-foreground'}`}>
-            {currentQuestion.nivel_bloom}
-          </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-            {currentQuestion.periodo} Período
-          </span>
-        </div>
+        {/* SEM metadata tags — indicadores removidos conforme solicitado */}
 
-        {/* Question card */}
+        {/* Question card — apenas enunciado */}
         <Card className="card-famp mb-4">
           <CardContent className="p-5">
             <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
@@ -734,7 +724,7 @@ export default function QuestPage() {
           </div>
         )}
 
-        {/* Explanation panel */}
+        {/* Explanation panel — aparece SOMENTE após responder */}
         {showExplanation && (
           <Card className="mt-4 border-primary/20">
             <CardContent className="p-4">
@@ -744,7 +734,7 @@ export default function QuestPage() {
               </h4>
               <div className="space-y-2 text-xs text-muted-foreground">
                 <div>
-                  <span className="text-foreground font-medium">Conteúdo:</span> {currentQuestion.conteudo}
+                  <span className="text-foreground font-medium">Tema:</span> {currentQuestion.conteudo}
                 </div>
                 <div>
                   <span className="text-foreground font-medium">Objetivo:</span> {currentQuestion.objetivo}

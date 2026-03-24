@@ -123,8 +123,8 @@ export default function DesempenhoPage() {
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: 'geral', label: 'Visão Geral', icon: <BarChart3 className="w-3.5 h-3.5" /> },
-    { key: 'area', label: 'Por Área', icon: <Target className="w-3.5 h-3.5" /> },
-    { key: 'subarea', label: 'Por Subárea', icon: <FileQuestion className="w-3.5 h-3.5" /> },
+    { key: 'area', label: 'Por Grande Área', icon: <Target className="w-3.5 h-3.5" /> },
+    { key: 'subarea', label: 'Por Especialidade', icon: <FileQuestion className="w-3.5 h-3.5" /> },
     { key: 'dificuldade', label: 'Dificuldade', icon: <TrendingUp className="w-3.5 h-3.5" /> },
     { key: 'bloom', label: 'Nível Cognitivo', icon: <Brain className="w-3.5 h-3.5" /> },
     { key: 'timeline', label: 'Evolução', icon: <TrendingUp className="w-3.5 h-3.5" /> },
@@ -277,7 +277,7 @@ export default function DesempenhoPage() {
                   <CardContent className="p-5">
                     <h4 className="text-xs font-semibold text-foreground mb-4 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
                       <Target className="w-4 h-4 text-primary" />
-                      Taxa de Acerto por Área
+                      Taxa de Acerto por Grande Área
                     </h4>
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={areaData.slice(0, 8)} layout="vertical" margin={{ left: 0 }}>
@@ -337,10 +337,10 @@ export default function DesempenhoPage() {
               <Card className="card-famp">
                 <CardContent className="p-5">
                   <h4 className="text-xs font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-display)' }}>
-                    Desempenho por Área
+                    Desempenho por Grande Área
                   </h4>
                   {areaData.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-8">Nenhuma área com questões respondidas.</p>
+                    <p className="text-xs text-muted-foreground text-center py-8">Nenhuma grande área com questões respondidas.</p>
                   ) : (
                     <>
                       <ResponsiveContainer width="100%" height={Math.max(300, areaData.length * 40)}>
@@ -360,7 +360,7 @@ export default function DesempenhoPage() {
                         <table className="w-full text-xs">
                           <thead className="bg-muted/50">
                             <tr>
-                              <th className="text-left p-3 text-muted-foreground font-mono">Área</th>
+                              <th className="text-left p-3 text-muted-foreground font-mono">Grande Área</th>
                               <th className="text-center p-3 text-muted-foreground font-mono">Total</th>
                               <th className="text-center p-3 text-muted-foreground font-mono">Acertos</th>
                               <th className="text-center p-3 text-muted-foreground font-mono">Erros</th>
@@ -399,10 +399,10 @@ export default function DesempenhoPage() {
               <Card className="card-famp">
                 <CardContent className="p-5">
                   <h4 className="text-xs font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-display)' }}>
-                    Desempenho por Subárea
+                    Desempenho por Especialidade
                   </h4>
                   {subareaData.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-8">Nenhuma subárea com questões respondidas.</p>
+                    <p className="text-xs text-muted-foreground text-center py-8">Nenhuma especialidade com questões respondidas.</p>
                   ) : (
                     <>
                       <ResponsiveContainer width="100%" height={Math.max(300, subareaData.length * 35)}>
@@ -422,7 +422,7 @@ export default function DesempenhoPage() {
                         <table className="w-full text-xs">
                           <thead className="bg-muted/50">
                             <tr>
-                              <th className="text-left p-3 text-muted-foreground font-mono">Subárea</th>
+                              <th className="text-left p-3 text-muted-foreground font-mono">Especialidade</th>
                               <th className="text-center p-3 text-muted-foreground font-mono">Acertos</th>
                               <th className="text-center p-3 text-muted-foreground font-mono">Erros</th>
                               <th className="text-center p-3 text-muted-foreground font-mono">Taxa</th>
