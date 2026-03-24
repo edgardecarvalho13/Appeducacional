@@ -59,6 +59,8 @@ export interface CadernoErroEntry {
   dataResposta: string;
   revisado: boolean;
   taxonomia: TaxonomiaErro; // C1, C2, C3, C4 ou null
+  manual?: boolean;         // true se adicionado manualmente
+  fonte?: string;           // ex: "Sala de aula", "Simulado X", etc.
 }
 
 /* ─── Storage Keys ─── */
@@ -196,6 +198,20 @@ export function useQuestStore() {
     saveToStorage(CADERNO_KEY, updated);
   }, [cadernoErros]);
 
+  const addManualCadernoEntry = useCallback((entry: Omit<CadernoErroEntry, 'id' | 'questionId' | 'revisado'>) => {
+    const newEntry: CadernoErroEntry = {
+      ...entry,
+      id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      questionId: -1,
+      revisado: false,
+      manual: true,
+    };
+    const updated = [newEntry, ...cadernoErros];
+    setCadernoErros(updated);
+    saveToStorage(CADERNO_KEY, updated);
+    return newEntry;
+  }, [cadernoErros]);
+
   // Stats
   const stats = useMemo(() => {
     const totalAnswered = Object.keys(progress).length;
@@ -287,5 +303,6 @@ export function useQuestStore() {
     updateCadernoTaxonomia,
     toggleCadernoRevisado,
     removeCadernoEntry,
+    addManualCadernoEntry,
   };
 }

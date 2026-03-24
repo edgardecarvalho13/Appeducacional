@@ -5,11 +5,11 @@
  * Colunas: Data | Grande Área | Especialidade | Taxonomia (C1-C4) |
  *          Porque Errei (auto) | Pergunta | Resposta Correta | Sua Anotação
  *
- * Taxonomia de Erros:
- *   C1 = Conceitual/algoritmo
- *   C2 = Discriminação clínica
- *   C3 = Atenção/leitura
- *   C4 = Estratégia de prova
+ * Features:
+ *   - Expandir/Recolher em Pergunta, Resposta Correta e Sua Anotação
+ *   - Entrada manual para provas fora da plataforma
+ *   - Exportar CSV
+ *   - Filtros por área, taxonomia, status
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -21,20 +21,32 @@ import {
   ArrowLeft,
   BookOpen,
   CheckCircle2,
-  Filter,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Info,
   Pencil,
-  RotateCcw,
+  Plus,
   Save,
   Search,
   Trash2,
-  XCircle,
   X,
-  Download,
-  ChevronDown,
-  Info,
+  XCircle,
 } from 'lucide-react';
 import { useQuestStore, TAXONOMIA_LABELS, type CadernoErroEntry, type TaxonomiaErro } from '@/hooks/useQuestStore';
 import { toast } from 'sonner';
+
+/* ─── Grandes Áreas disponíveis para entrada manual ─── */
+const GRANDES_AREAS = [
+  'Clínica Médica',
+  'Cirurgia',
+  'Pediatria',
+  'Ginecologia e Obstetrícia',
+  'Psiquiatria',
+  'Saúde Coletiva',
+  'Medicina de Família e Comunidade',
+  'Medicina do Trabalho',
+];
 
 export default function CadernoErrosPage() {
   const {
@@ -43,6 +55,7 @@ export default function CadernoErrosPage() {
     updateCadernoTaxonomia,
     toggleCadernoRevisado,
     removeCadernoEntry,
+    addManualCadernoEntry,
   } = useQuestStore();
 
   // Filters
@@ -55,12 +68,28 @@ export default function CadernoErrosPage() {
   const [editingAnotacaoId, setEditingAnotacaoId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [expandedEnunciadoId, setExpandedEnunciadoId] = useState<string | null>(null);
+  const [expandedRespostaId, setExpandedRespostaId] = useState<string | null>(null);
+  const [expandedAnotacaoId, setExpandedAnotacaoId] = useState<string | null>(null);
   const [showTaxonomiaInfo, setShowTaxonomiaInfo] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
+
+  // Manual entry form state
+  const [manualForm, setManualForm] = useState({
+    area: '',
+    subarea: '',
+    enunciado: '',
+    respostaCerta: '',
+    respostaCertaTexto: '',
+    taxonomia: '' as string,
+    anotacao: '',
+    fonte: '',
+  });
 
   // Unique areas
   const areas = useMemo(() => {
     const set = new Set<string>();
     cadernoErros.forEach(e => set.add(e.area));
+    GRANDES_AREAS.forEach(a => set.add(a));
     return Array.from(set).sort();
   }, [cadernoErros]);
 
@@ -77,7 +106,8 @@ export default function CadernoErrosPage() {
           e.enunciado.toLowerCase().includes(term) ||
           e.area.toLowerCase().includes(term) ||
           e.subarea.toLowerCase().includes(term) ||
-          e.anotacao.toLowerCase().includes(term)
+          e.anotacao.toLowerCase().includes(term) ||
+          (e.fonte || '').toLowerCase().includes(term)
         );
       }
       return true;
@@ -88,7 +118,7 @@ export default function CadernoErrosPage() {
   const totalErros = cadernoErros.length;
   const pendentes = cadernoErros.filter(e => !e.revisado).length;
   const revisados = cadernoErros.filter(e => e.revisado).length;
-  const semTaxonomia = cadernoErros.filter(e => !e.taxonomia).length;
+  const manuais = cadernoErros.filter(e => e.manual).length;
 
   // Handlers
   const handleStartEditAnotacao = useCallback((entry: CadernoErroEntry) => {
@@ -113,6 +143,28 @@ export default function CadernoErrosPage() {
     toast.success('Questão removida do caderno.');
   }, [removeCadernoEntry]);
 
+  const handleManualSubmit = useCallback(() => {
+    if (!manualForm.area || !manualForm.enunciado || !manualForm.respostaCertaTexto) {
+      toast.error('Preencha pelo menos: Grande Área, Pergunta e Resposta Correta.');
+      return;
+    }
+    addManualCadernoEntry({
+      area: manualForm.area,
+      subarea: manualForm.subarea || '—',
+      enunciado: manualForm.enunciado,
+      respostaCerta: manualForm.respostaCerta || '—',
+      respostaCertaTexto: manualForm.respostaCertaTexto,
+      anotacao: manualForm.anotacao,
+      dataResposta: new Date().toISOString(),
+      taxonomia: (manualForm.taxonomia || null) as TaxonomiaErro,
+      manual: true,
+      fonte: manualForm.fonte || 'Prova externa',
+    });
+    setManualForm({ area: '', subarea: '', enunciado: '', respostaCerta: '', respostaCertaTexto: '', taxonomia: '', anotacao: '', fonte: '' });
+    setShowManualForm(false);
+    toast.success('Erro adicionado manualmente ao caderno!');
+  }, [manualForm, addManualCadernoEntry]);
+
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -135,7 +187,7 @@ export default function CadernoErrosPage() {
 
   // Export CSV
   const exportCSV = useCallback(() => {
-    const headers = ['Data', 'Grande Área', 'Especialidade', 'Taxonomia', 'Porque Errei', 'Pergunta', 'Resposta Correta', 'Sua Anotação', 'Revisado'];
+    const headers = ['Data', 'Grande Área', 'Especialidade', 'Taxonomia', 'Porque Errei', 'Pergunta', 'Resposta Correta', 'Sua Anotação', 'Fonte', 'Revisado'];
     const rows = filteredEntries.map(e => [
       formatDate(e.dataResposta),
       e.area,
@@ -145,6 +197,7 @@ export default function CadernoErrosPage() {
       `"${e.enunciado.replace(/"/g, '""')}"`,
       `${e.respostaCerta} - ${e.respostaCertaTexto}`,
       `"${e.anotacao.replace(/"/g, '""')}"`,
+      e.fonte || (e.manual ? 'Manual' : 'FAMP Quest'),
       e.revisado ? 'Sim' : 'Não',
     ]);
     const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
@@ -158,6 +211,47 @@ export default function CadernoErrosPage() {
     toast.success('CSV exportado!');
   }, [filteredEntries]);
 
+  /* ─── Collapsible text helper ─── */
+  const CollapsibleText = ({
+    text,
+    entryId,
+    expandedId,
+    setExpandedId,
+    maxLength = 120,
+    prefix,
+  }: {
+    text: string;
+    entryId: string;
+    expandedId: string | null;
+    setExpandedId: (id: string | null) => void;
+    maxLength?: number;
+    prefix?: React.ReactNode;
+  }) => {
+    const isExpanded = expandedId === entryId;
+    const needsCollapse = text.length > maxLength;
+
+    return (
+      <div className="relative">
+        {prefix}
+        <p className={`text-foreground text-[11px] leading-tight ${!isExpanded && needsCollapse ? 'line-clamp-3' : ''}`}>
+          {text}
+        </p>
+        {needsCollapse && (
+          <button
+            onClick={() => setExpandedId(isExpanded ? null : entryId)}
+            className="text-primary text-[10px] hover:underline mt-0.5 flex items-center gap-0.5"
+          >
+            {isExpanded ? (
+              <><ChevronUp className="w-3 h-3" /> Recolher</>
+            ) : (
+              <><ChevronDown className="w-3 h-3" /> Expandir</>
+            )}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <DashboardLayout title="Caderno de Erros" subtitle="Revisão de questões erradas">
       <div className="p-5 max-w-[1400px] mx-auto">
@@ -168,6 +262,15 @@ export default function CadernoErrosPage() {
             </span>
           </Link>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowManualForm(!showManualForm)}
+              className="text-xs gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Adicionar Manual
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -188,6 +291,155 @@ export default function CadernoErrosPage() {
             </Button>
           </div>
         </div>
+
+        {/* Manual Entry Form */}
+        {showManualForm && (
+          <Card className="mb-4 border-primary/30 bg-card">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground" style={{ fontFamily: 'var(--font-display)' }}>
+                    Adicionar Erro Manualmente
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Para questões de provas feitas fora da plataforma (sala de aula, simulados, etc.)
+                  </p>
+                </div>
+                <button onClick={() => setShowManualForm(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                {/* Fonte */}
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Fonte / Prova</label>
+                  <input
+                    type="text"
+                    value={manualForm.fonte}
+                    onChange={(e) => setManualForm(f => ({ ...f, fonte: e.target.value }))}
+                    placeholder="Ex: Sala de aula, Simulado ENADE..."
+                    className="w-full h-9 px-3 rounded-md border border-border bg-background text-xs text-foreground focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/40"
+                  />
+                </div>
+
+                {/* Grande Área */}
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Grande Área *</label>
+                  <select
+                    value={manualForm.area}
+                    onChange={(e) => setManualForm(f => ({ ...f, area: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-md border border-border bg-background text-xs text-foreground focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Selecione...</option>
+                    {GRANDES_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </div>
+
+                {/* Especialidade */}
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Especialidade</label>
+                  <input
+                    type="text"
+                    value={manualForm.subarea}
+                    onChange={(e) => setManualForm(f => ({ ...f, subarea: e.target.value }))}
+                    placeholder="Ex: Cardiologia, Nefrologia..."
+                    className="w-full h-9 px-3 rounded-md border border-border bg-background text-xs text-foreground focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/40"
+                  />
+                </div>
+
+                {/* Taxonomia */}
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Taxonomia do Erro</label>
+                  <select
+                    value={manualForm.taxonomia}
+                    onChange={(e) => setManualForm(f => ({ ...f, taxonomia: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-md border border-border bg-background text-xs text-foreground focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="C1">C1 — Conceitual/algoritmo</option>
+                    <option value="C2">C2 — Discriminação clínica</option>
+                    <option value="C3">C3 — Atenção/leitura</option>
+                    <option value="C4">C4 — Estratégia de prova</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Pergunta */}
+              <div className="mb-3">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Pergunta / Enunciado *</label>
+                <textarea
+                  value={manualForm.enunciado}
+                  onChange={(e) => setManualForm(f => ({ ...f, enunciado: e.target.value }))}
+                  placeholder="Cole ou digite o enunciado da questão..."
+                  rows={3}
+                  className="w-full p-3 rounded-md border border-border bg-background text-xs text-foreground resize-y focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/40"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                {/* Letra da resposta correta */}
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Letra da Resposta Correta</label>
+                  <select
+                    value={manualForm.respostaCerta}
+                    onChange={(e) => setManualForm(f => ({ ...f, respostaCerta: e.target.value }))}
+                    className="w-full h-9 px-3 rounded-md border border-border bg-background text-xs text-foreground focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">—</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                    <option value="E">E</option>
+                  </select>
+                </div>
+
+                {/* Texto da resposta correta */}
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Texto da Resposta Correta *</label>
+                  <input
+                    type="text"
+                    value={manualForm.respostaCertaTexto}
+                    onChange={(e) => setManualForm(f => ({ ...f, respostaCertaTexto: e.target.value }))}
+                    placeholder="Texto completo da alternativa correta..."
+                    className="w-full h-9 px-3 rounded-md border border-border bg-background text-xs text-foreground focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/40"
+                  />
+                </div>
+              </div>
+
+              {/* Anotação */}
+              <div className="mb-4">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Sua Anotação (por que esta é a resposta certa?)</label>
+                <textarea
+                  value={manualForm.anotacao}
+                  onChange={(e) => setManualForm(f => ({ ...f, anotacao: e.target.value }))}
+                  placeholder="Explique por que a alternativa correta é a certa..."
+                  rows={2}
+                  className="w-full p-3 rounded-md border border-border bg-background text-xs text-foreground resize-y focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/40"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleManualSubmit}
+                  className="text-xs bg-primary text-primary-foreground gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Adicionar ao Caderno
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowManualForm(false)}
+                  className="text-xs"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Taxonomia Info Panel */}
         {showTaxonomiaInfo && (
@@ -242,10 +494,10 @@ export default function CadernoErrosPage() {
           </div>
           <div className="bg-card border border-border rounded-lg p-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-              <Info className="w-3.5 h-3.5 text-blue-400" />
-              Sem Taxonomia
+              <Pencil className="w-3.5 h-3.5 text-cyan-400" />
+              Manuais
             </div>
-            <p className="text-xl font-bold text-blue-400" style={{ fontFamily: 'var(--font-display)' }}>{semTaxonomia}</p>
+            <p className="text-xl font-bold text-cyan-400" style={{ fontFamily: 'var(--font-display)' }}>{manuais}</p>
           </div>
         </div>
 
@@ -259,7 +511,7 @@ export default function CadernoErrosPage() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar por enunciado, área ou anotação..."
+                  placeholder="Buscar por enunciado, área, fonte ou anotação..."
                   className="w-full h-9 pl-9 pr-3 rounded-md border border-border bg-background text-xs text-foreground focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
                 />
               </div>
@@ -312,14 +564,24 @@ export default function CadernoErrosPage() {
             <h4 className="text-sm font-semibold text-foreground mb-2" style={{ fontFamily: 'var(--font-display)' }}>
               Caderno de Erros vazio
             </h4>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Quando você errar uma questão no FAMP Quest, ela será automaticamente adicionada aqui para revisão.
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
+              Quando você errar uma questão no FAMP Quest, ela será automaticamente adicionada aqui. Você também pode adicionar erros manualmente de provas feitas fora da plataforma.
             </p>
-            <Link href="/quest">
-              <Button size="sm" className="mt-4 text-xs bg-primary text-primary-foreground">
-                Ir para o FAMP Quest
+            <div className="flex items-center justify-center gap-3">
+              <Link href="/quest">
+                <Button size="sm" className="text-xs bg-primary text-primary-foreground">
+                  Ir para o FAMP Quest
+                </Button>
+              </Link>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowManualForm(true)}
+                className="text-xs gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" /> Adicionar Manual
               </Button>
-            </Link>
+            </div>
           </div>
         )}
 
@@ -358,7 +620,6 @@ export default function CadernoErrosPage() {
               <tbody>
                 {filteredEntries.map((entry) => {
                   const isEditingAnotacao = editingAnotacaoId === entry.id;
-                  const isExpandedEnunciado = expandedEnunciadoId === entry.id;
 
                   return (
                     <tr
@@ -369,7 +630,14 @@ export default function CadernoErrosPage() {
                     >
                       {/* Data */}
                       <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
-                        {formatDate(entry.dataResposta)}
+                        <div>
+                          {formatDate(entry.dataResposta)}
+                          {entry.manual && (
+                            <span className="block text-[9px] text-cyan-400/70 mt-0.5">
+                              {entry.fonte || 'Manual'}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Grande Área */}
@@ -406,37 +674,36 @@ export default function CadernoErrosPage() {
                         </span>
                       </td>
 
-                      {/* Pergunta (enunciado) */}
+                      {/* Pergunta (enunciado) — Expandir/Recolher */}
                       <td className="px-3 py-2.5">
-                        <div className="relative">
-                          <p className={`text-foreground text-[11px] leading-tight ${isExpandedEnunciado ? '' : 'line-clamp-3'}`}>
-                            {entry.enunciado}
-                          </p>
-                          {entry.enunciado.length > 150 && (
-                            <button
-                              onClick={() => setExpandedEnunciadoId(isExpandedEnunciado ? null : entry.id)}
-                              className="text-primary text-[10px] hover:underline mt-0.5 flex items-center gap-0.5"
-                            >
-                              <ChevronDown className={`w-3 h-3 transition-transform ${isExpandedEnunciado ? 'rotate-180' : ''}`} />
-                              {isExpandedEnunciado ? 'Recolher' : 'Expandir'}
-                            </button>
-                          )}
-                        </div>
+                        <CollapsibleText
+                          text={entry.enunciado}
+                          entryId={`enunciado-${entry.id}`}
+                          expandedId={expandedEnunciadoId}
+                          setExpandedId={setExpandedEnunciadoId}
+                          maxLength={120}
+                        />
                       </td>
 
-                      {/* Resposta Correta */}
+                      {/* Resposta Correta — Expandir/Recolher */}
                       <td className="px-3 py-2.5">
-                        <div className="flex items-start gap-1.5">
-                          <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold mt-0.5">
-                            {entry.respostaCerta}
-                          </span>
-                          <span className="text-foreground text-[11px] leading-tight">
-                            {entry.respostaCertaTexto}
-                          </span>
-                        </div>
+                        <CollapsibleText
+                          text={entry.respostaCertaTexto}
+                          entryId={`resposta-${entry.id}`}
+                          expandedId={expandedRespostaId}
+                          setExpandedId={setExpandedRespostaId}
+                          maxLength={80}
+                          prefix={
+                            entry.respostaCerta && entry.respostaCerta !== '—' ? (
+                              <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold mb-1">
+                                {entry.respostaCerta}
+                              </span>
+                            ) : undefined
+                          }
+                        />
                       </td>
 
-                      {/* Sua Anotação */}
+                      {/* Sua Anotação — Expandir/Recolher + Edição */}
                       <td className="px-3 py-2.5">
                         {isEditingAnotacao ? (
                           <div className="flex flex-col gap-1.5">
@@ -444,7 +711,7 @@ export default function CadernoErrosPage() {
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
                               placeholder="Explique por que esta é a resposta correta..."
-                              className="w-full h-16 p-2 rounded border border-border bg-background text-[11px] text-foreground resize-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/40"
+                              className="w-full h-20 p-2 rounded border border-border bg-background text-[11px] text-foreground resize-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/40"
                               autoFocus
                             />
                             <div className="flex gap-1">
@@ -462,20 +729,30 @@ export default function CadernoErrosPage() {
                               </button>
                             </div>
                           </div>
+                        ) : entry.anotacao ? (
+                          <div
+                            onClick={() => handleStartEditAnotacao(entry)}
+                            className="cursor-pointer group"
+                          >
+                            <CollapsibleText
+                              text={entry.anotacao}
+                              entryId={`anotacao-${entry.id}`}
+                              expandedId={expandedAnotacaoId}
+                              setExpandedId={setExpandedAnotacaoId}
+                              maxLength={80}
+                            />
+                            <span className="text-[9px] text-muted-foreground/40 group-hover:text-primary/60 transition-colors mt-0.5 block">
+                              Clique para editar
+                            </span>
+                          </div>
                         ) : (
                           <div
                             onClick={() => handleStartEditAnotacao(entry)}
                             className="cursor-pointer group"
                           >
-                            {entry.anotacao ? (
-                              <p className="text-foreground text-[11px] leading-tight group-hover:text-primary transition-colors">
-                                {entry.anotacao}
-                              </p>
-                            ) : (
-                              <span className="text-muted-foreground/40 text-[11px] italic group-hover:text-primary/60 transition-colors flex items-center gap-1">
-                                <Pencil className="w-3 h-3" /> Clique para anotar
-                              </span>
-                            )}
+                            <span className="text-muted-foreground/40 text-[11px] italic group-hover:text-primary/60 transition-colors flex items-center gap-1">
+                              <Pencil className="w-3 h-3" /> Clique para anotar
+                            </span>
                           </div>
                         )}
                       </td>
