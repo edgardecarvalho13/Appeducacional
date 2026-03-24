@@ -19,14 +19,14 @@ import AccessDenied from "./pages/AccessDenied";
 import {
   PlannerPage,
   LibraryPage,
-  CadernoErrosPage,
   FlashcardsPage,
-  AnalyticsPage,
   TurmasPage,
   AvisosPage,
 } from "./pages/ModulePlaceholder";
 import QuestPage from "./pages/QuestPage";
 import TutorPage from "./pages/TutorPage";
+import CadernoErrosPage from "./pages/CadernoErrosPage";
+import DesempenhoPage from "./pages/DesempenhoPage";
 
 function Router() {
   return (
@@ -69,6 +69,11 @@ function Router() {
           <CadernoErrosPage />
         </ProtectedRoute>
       </Route>
+      <Route path="/desempenho">
+        <ProtectedRoute>
+          <DesempenhoPage />
+        </ProtectedRoute>
+      </Route>
       <Route path="/flashcards">
         <ProtectedRoute>
           <FlashcardsPage />
@@ -78,7 +83,7 @@ function Router() {
       {/* Protected: Coordination & Admin only */}
       <Route path="/analytics">
         <ProtectedRoute allowedRoles={['coordenacao', 'admin']}>
-          <AnalyticsPage />
+          <DesempenhoPage />
         </ProtectedRoute>
       </Route>
       <Route path="/turmas">

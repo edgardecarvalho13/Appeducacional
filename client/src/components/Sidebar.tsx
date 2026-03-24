@@ -45,7 +45,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'quest', label: 'FAMP Quest', icon: FileQuestion, href: '/quest', status: 'active' },
   { id: 'tutor', label: 'FAMP Tutor IA', icon: Bot, href: '/tutor', status: 'active' },
   { id: 'library', label: 'FAMP Library', icon: BookOpen, href: '/library', status: 'active' },
-  { id: 'caderno', label: 'Caderno de Erros', icon: AlertTriangle, href: '/caderno-erros', status: 'active', badge: '23' },
+  { id: 'caderno', label: 'Caderno de Erros', icon: AlertTriangle, href: '/caderno-erros', status: 'active' },
+  { id: 'desempenho', label: 'Desempenho', icon: BarChart3, href: '/desempenho', status: 'active' },
   { id: 'flashcards', label: 'Flashcards', icon: Layers, href: '/flashcards', status: 'coming_soon' },
 ];
 

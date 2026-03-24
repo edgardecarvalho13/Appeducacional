@@ -1,10 +1,11 @@
 /**
  * FAMP Quest — Banco de Questões
  * Design: Command Center dark theme with teal accent.
- * Features: Filtros avançados, resolução interativa, progresso salvo em localStorage.
+ * Features: Filtros avançados, resolução interativa, progresso salvo em localStorage,
+ *           importação CSV/XLSX, integração com Caderno de Erros.
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,6 @@ import {
   Check,
   X,
   RotateCcw,
-  BookOpen,
   Target,
   Brain,
   Trophy,
@@ -26,67 +26,20 @@ import {
   ListFilter,
   Eye,
   EyeOff,
-  Copy,
   CheckCircle2,
   XCircle,
   AlertCircle,
   Clock,
   GraduationCap,
+  Upload,
+  BarChart3,
+  BookOpen,
 } from 'lucide-react';
-import questionsData from '@/data/questions.json';
-
-/* ─── Types ─── */
-interface Question {
-  id: number;
-  ano: number;
-  prova: string;
-  area: string;
-  subarea: string;
-  conteudo: string;
-  nivel_bloom: string;
-  objetivo: string;
-  dificuldade: string;
-  fonte: string;
-  competencias: string;
-  periodo: string;
-  enunciado: string;
-  alternativas: Record<string, string>;
-  gabarito: string;
-}
-
-interface QuestionProgress {
-  questionId: number;
-  selectedAnswer: string | null;
-  isCorrect: boolean | null;
-  answeredAt: string;
-}
+import { useQuestStore, type Question } from '@/hooks/useQuestStore';
+import ImportQuestionsModal from '@/components/ImportQuestionsModal';
+import { toast } from 'sonner';
 
 type ViewMode = 'filters' | 'list' | 'question';
-
-/* ─── Helpers ─── */
-const STORAGE_KEY = 'famp-quest-progress';
-
-function loadProgress(): Record<number, QuestionProgress> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveProgress(progress: Record<number, QuestionProgress>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-}
-
-function getUniqueValues(key: keyof Question): string[] {
-  const set = new Set<string>();
-  (questionsData as Question[]).forEach((q) => {
-    const val = q[key];
-    if (typeof val === 'string' && val) set.add(val);
-  });
-  return Array.from(set).sort();
-}
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   'Fácil': 'bg-green-500/20 text-green-400 border-green-500/30',
@@ -101,9 +54,21 @@ const BLOOM_COLORS: Record<string, string> = {
   'Analisar': 'bg-purple-500/20 text-purple-400',
 };
 
+function getUniqueValues(questions: Question[], key: keyof Question): string[] {
+  const set = new Set<string>();
+  questions.forEach((q) => {
+    const val = q[key];
+    if (typeof val === 'string' && val) set.add(val);
+  });
+  return Array.from(set).sort();
+}
+
 /* ─── Component ─── */
 export default function QuestPage() {
-  const questions = questionsData as Question[];
+  const { allQuestions: questions, progress, saveAnswer, importQuestions, stats } = useQuestStore();
+
+  // Import modal
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Filter state
   const [selectedArea, setSelectedArea] = useState<string>('');
@@ -122,21 +87,18 @@ export default function QuestPage() {
   const [showResult, setShowResult] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
 
-  // Progress
-  const [progress, setProgress] = useState<Record<number, QuestionProgress>>(loadProgress);
-
   // Filter options
-  const areas = useMemo(() => getUniqueValues('area'), []);
+  const areas = useMemo(() => getUniqueValues(questions, 'area'), [questions]);
   const subareas = useMemo(() => {
-    if (!selectedArea) return getUniqueValues('subarea');
+    if (!selectedArea) return getUniqueValues(questions, 'subarea');
     const set = new Set<string>();
     questions.filter(q => q.area === selectedArea).forEach(q => set.add(q.subarea));
     return Array.from(set).sort();
   }, [selectedArea, questions]);
-  const dificuldades = useMemo(() => getUniqueValues('dificuldade'), []);
-  const blooms = useMemo(() => getUniqueValues('nivel_bloom'), []);
-  const periodos = useMemo(() => getUniqueValues('periodo'), []);
-  const competencias = useMemo(() => getUniqueValues('competencias'), []);
+  const dificuldades = useMemo(() => getUniqueValues(questions, 'dificuldade'), [questions]);
+  const blooms = useMemo(() => getUniqueValues(questions, 'nivel_bloom'), [questions]);
+  const periodos = useMemo(() => getUniqueValues(questions, 'periodo'), [questions]);
+  const competencias = useMemo(() => getUniqueValues(questions, 'competencias'), [questions]);
 
   // Filtered questions
   const filteredQuestions = useMemo(() => {
@@ -156,9 +118,9 @@ export default function QuestPage() {
   const currentQuestion = filteredQuestions[currentQuestionIdx];
 
   // Stats
-  const totalAnswered = Object.keys(progress).length;
-  const totalCorrect = Object.values(progress).filter(p => p.isCorrect).length;
-  const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+  const totalAnswered = stats.totalAnswered;
+  const totalCorrect = stats.totalCorrect;
+  const accuracy = stats.accuracy;
 
   // Handlers
   const clearFilters = useCallback(() => {
@@ -181,7 +143,6 @@ export default function QuestPage() {
   }, []);
 
   const shuffleAndStart = useCallback(() => {
-    // Shuffle filtered questions by randomizing the start index
     const randomIdx = Math.floor(Math.random() * filteredQuestions.length);
     setCurrentQuestionIdx(randomIdx);
     setSelectedAnswer(null);
@@ -198,19 +159,17 @@ export default function QuestPage() {
   const confirmAnswer = useCallback(() => {
     if (!selectedAnswer || !currentQuestion) return;
     const isCorrect = selectedAnswer === currentQuestion.gabarito;
-    const newProgress = {
-      ...progress,
-      [currentQuestion.id]: {
-        questionId: currentQuestion.id,
-        selectedAnswer,
-        isCorrect,
-        answeredAt: new Date().toISOString(),
-      },
-    };
-    setProgress(newProgress);
-    saveProgress(newProgress);
+    saveAnswer(currentQuestion.id, selectedAnswer, isCorrect);
     setShowResult(true);
-  }, [selectedAnswer, currentQuestion, progress]);
+    if (!isCorrect) {
+      toast.info('Questão adicionada ao Caderno de Erros', {
+        action: {
+          label: 'Ver caderno',
+          onClick: () => window.location.href = '/caderno-erros',
+        },
+      });
+    }
+  }, [selectedAnswer, currentQuestion, saveAnswer]);
 
   const nextQuestion = useCallback(() => {
     if (currentQuestionIdx < filteredQuestions.length - 1) {
@@ -244,11 +203,39 @@ export default function QuestPage() {
   // ─── RENDER: Filters Panel ───
   const renderFilters = () => (
     <div className="p-5 max-w-5xl mx-auto">
-      <Link href="/dashboard">
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-4 transition-colors cursor-pointer">
-          <ArrowLeft className="w-3 h-3" /> Voltar ao Dashboard
-        </span>
-      </Link>
+      <div className="flex items-center justify-between mb-4">
+        <Link href="/dashboard">
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+            <ArrowLeft className="w-3 h-3" /> Voltar ao Dashboard
+          </span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/desempenho">
+            <Button variant="outline" size="sm" className="text-xs gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5" /> Desempenho
+            </Button>
+          </Link>
+          <Link href="/caderno-erros">
+            <Button variant="outline" size="sm" className="text-xs gap-1.5 border-red-500/30 text-red-400 hover:bg-red-500/5">
+              <BookOpen className="w-3.5 h-3.5" />
+              Caderno de Erros
+              {stats.pendingErrors > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[9px] font-bold">
+                  {stats.pendingErrors}
+                </span>
+              )}
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowImportModal(true)}
+            className="text-xs gap-1.5"
+          >
+            <Upload className="w-3.5 h-3.5" /> Importar
+          </Button>
+        </div>
+      </div>
 
       {/* Stats Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -303,7 +290,6 @@ export default function QuestPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {/* Área */}
             <div>
               <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Área</label>
               <select
@@ -315,8 +301,6 @@ export default function QuestPage() {
                 {areas.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
-
-            {/* Subárea */}
             <div>
               <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Subárea</label>
               <select
@@ -328,8 +312,6 @@ export default function QuestPage() {
                 {subareas.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-
-            {/* Dificuldade */}
             <div>
               <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Dificuldade</label>
               <select
@@ -341,8 +323,6 @@ export default function QuestPage() {
                 {dificuldades.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
-
-            {/* Nível Bloom */}
             <div>
               <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Nível Cognitivo</label>
               <select
@@ -354,8 +334,6 @@ export default function QuestPage() {
                 {blooms.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
-
-            {/* Período */}
             <div>
               <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Período</label>
               <select
@@ -367,8 +345,6 @@ export default function QuestPage() {
                 {periodos.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
-
-            {/* Competência */}
             <div>
               <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-1 block">Competência</label>
               <select
@@ -640,7 +616,7 @@ export default function QuestPage() {
 
         {/* Alternatives */}
         <div className="space-y-2 mb-4">
-          {['A', 'B', 'C', 'D'].map((letter) => {
+          {['A', 'B', 'C', 'D', 'E'].map((letter) => {
             const text = currentQuestion.alternativas[letter];
             if (!text) return null;
 
@@ -750,6 +726,11 @@ export default function QuestPage() {
                 </>
               )}
             </div>
+            {selectedAnswer !== currentQuestion.gabarito && (
+              <p className="text-xs text-muted-foreground mt-1 ml-6">
+                Esta questão foi adicionada ao seu Caderno de Erros para revisão.
+              </p>
+            )}
           </div>
         )}
 
@@ -790,6 +771,13 @@ export default function QuestPage() {
       {viewMode === 'filters' && renderFilters()}
       {viewMode === 'list' && renderList()}
       {viewMode === 'question' && renderQuestion()}
+
+      {/* Import Modal */}
+      <ImportQuestionsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={importQuestions}
+      />
     </DashboardLayout>
   );
 }
