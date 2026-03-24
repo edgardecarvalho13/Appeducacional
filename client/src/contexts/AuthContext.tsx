@@ -27,11 +27,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'famp_auth_user';
 
-// Verifica se as credenciais do Supabase estão configuradas
-const SUPABASE_CONFIGURED = !!(
-  import.meta.env.VITE_SUPABASE_URL &&
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+// Supabase está sempre configurado (credenciais hardcoded como fallback)
+const SUPABASE_CONFIGURED = true;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
