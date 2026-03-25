@@ -158,14 +158,7 @@ export default function DesempenhoPage() {
         </Link>
 
         {/* Stats Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-          <div className="bg-card border border-border rounded-lg p-3">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-              <FileQuestion className="w-3.5 h-3.5" />
-              Total
-            </div>
-            <p className="text-xl font-bold text-foreground" style={{ fontFamily: 'var(--font-display)' }}>{stats.totalQuestions}</p>
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <div className="bg-card border border-border rounded-lg p-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
               <Target className="w-3.5 h-3.5" />

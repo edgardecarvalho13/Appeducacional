@@ -24,6 +24,8 @@ import {
   GraduationCap,
   Layers,
   Users,
+  Stethoscope,
+  Building2,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
@@ -48,6 +50,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'caderno', label: 'Caderno de Erros', icon: AlertTriangle, href: '/caderno-erros', status: 'active' },
   { id: 'desempenho', label: 'Desempenho', icon: BarChart3, href: '/desempenho', status: 'active' },
   { id: 'flashcards', label: 'Flashcards', icon: Layers, href: '/flashcards', status: 'coming_soon' },
+  { id: 'enamed', label: 'ENAMED', icon: Stethoscope, href: '/enamed', status: 'coming_soon' },
+  { id: 'internato', label: 'Internato', icon: Building2, href: '/internato', status: 'coming_soon' },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [

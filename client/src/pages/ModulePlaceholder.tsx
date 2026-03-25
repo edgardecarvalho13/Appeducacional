@@ -20,6 +20,8 @@ import {
   Layers,
   ArrowLeft,
   Wrench,
+  Stethoscope,
+  Building2,
 } from 'lucide-react';
 
 interface ModuleConfig {
@@ -94,6 +96,20 @@ const MODULES: Record<string, ModuleConfig> = {
     description: 'Envie comunicados para turmas específicas ou todos os alunos.',
     features: ['Avisos por turma', 'Prioridades', 'Controle de leitura', 'Expiração automática'],
   },
+  enamed: {
+    title: 'ENAMED',
+    subtitle: 'Preparatório ENAMED',
+    icon: Stethoscope,
+    description: 'Módulo dedicado à preparação para o Exame Nacional de Desempenho dos Estudantes de Medicina.',
+    features: ['Simulações completas', 'Questões por eixo', 'Ranking comparativo', 'Revisão dirigida'],
+  },
+  internato: {
+    title: 'Internato',
+    subtitle: 'Módulo de Internato',
+    icon: Building2,
+    description: 'Acompanhamento e gestão das atividades do internato médico.',
+    features: ['Registro de procedimentos', 'Logbook digital', 'Avaliação por preceptor', 'Escala de plantões'],
+  },
 };
 
 export function createModulePage(moduleKey: string) {
@@ -160,3 +176,5 @@ export const FlashcardsPage = createModulePage('flashcards');
 export const AnalyticsPage = createModulePage('analytics');
 export const TurmasPage = createModulePage('turmas');
 export const AvisosPage = createModulePage('avisos');
+export const ENAMEDPage = createModulePage('enamed');
+export const InternatoPage = createModulePage('internato');

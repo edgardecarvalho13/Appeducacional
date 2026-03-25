@@ -16,6 +16,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'wouter';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   ArrowLeft,
   Filter,
@@ -58,6 +59,7 @@ function getUniqueValues(questions: Question[], key: keyof Question): string[] {
 
 /* ─── Component ─── */
 export default function QuestPage() {
+  const { hasRole } = useAuth();
   const { allQuestions: questions, progress, saveAnswer, importQuestions, stats } = useQuestStore();
 
   // Import modal
@@ -212,30 +214,16 @@ export default function QuestPage() {
           </span>
         </Link>
         <div className="flex items-center gap-2">
-          <Link href="/desempenho">
-            <Button variant="outline" size="sm" className="text-xs gap-1.5">
-              <BarChart3 className="w-3.5 h-3.5" /> Desempenho
+          {hasRole(['professor', 'coordenacao', 'admin']) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowImportModal(true)}
+              className="text-xs gap-1.5"
+            >
+              <Upload className="w-3.5 h-3.5" /> Importar
             </Button>
-          </Link>
-          <Link href="/caderno-erros">
-            <Button variant="outline" size="sm" className="text-xs gap-1.5 border-red-500/30 text-red-400 hover:bg-red-500/5">
-              <BookOpen className="w-3.5 h-3.5" />
-              Caderno de Erros
-              {stats.pendingErrors > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[9px] font-bold">
-                  {stats.pendingErrors}
-                </span>
-              )}
-            </Button>
-          </Link>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowImportModal(true)}
-            className="text-xs gap-1.5"
-          >
-            <Upload className="w-3.5 h-3.5" /> Importar
-          </Button>
+          )}
         </div>
       </div>
 
@@ -370,7 +358,11 @@ export default function QuestPage() {
       {/* Results count + actions */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-muted-foreground">
-          <span className="text-foreground font-semibold">{filteredQuestions.length}</span> questões encontradas
+          {activeFilterCount > 0 ? (
+            <><span className="text-foreground font-semibold">{filteredQuestions.length}</span> questões encontradas</>
+          ) : (
+            <span>&nbsp;</span>
+          )}
         </p>
         <div className="flex gap-2">
           <Button

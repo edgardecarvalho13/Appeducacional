@@ -21,6 +21,8 @@ import {
   FlashcardsPage,
   TurmasPage,
   AvisosPage,
+  ENAMEDPage,
+  InternatoPage,
 } from "./pages/ModulePlaceholder";
 import BibliotecaPage from "./pages/BibliotecaPage";
 import QuestPage from "./pages/QuestPage";
@@ -77,6 +79,16 @@ function Router() {
       <Route path="/flashcards">
         <ProtectedRoute>
           <FlashcardsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/enamed">
+        <ProtectedRoute>
+          <ENAMEDPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/internato">
+        <ProtectedRoute>
+          <InternatoPage />
         </ProtectedRoute>
       </Route>
 
