@@ -48,6 +48,14 @@ import {
 import { usePlannerStore } from '@/hooks/usePlannerStore';
 import type { PlannerItemStatus, EtapaEstudo } from '@/lib/types';
 import { toast } from 'sonner';
+import {
+  PLANO_ENSINO,
+  getEspecialidades,
+  getSemanasDisponiveis,
+  getTemasParaSemana,
+  isSemanaEspecial,
+} from '@/data/plano-ensino';
+import type { TemaAula } from '@/data/plano-ensino';
 
 // ─── Constants ───
 const ETAPA_LABELS: Record<EtapaEstudo, { label: string; icon: React.ElementType; color: string }> = {
@@ -722,7 +730,7 @@ function TemaDetailView({ store, temaId, onBack, onStartSession }: any) {
 // ═══════════════════════════════════════════════════════════════
 function CreateTemaView({ store, onBack, onCreated }: any) {
   const [form, setForm] = useState({
-    semana: 1,
+    semana: 0,
     area: '',
     especialidade: '',
     tema: '',
@@ -730,7 +738,40 @@ function CreateTemaView({ store, onBack, onCreated }: any) {
     observacoes: '',
   });
 
-  const areas = ['Clínica Médica', 'Cirurgia', 'Ginecologia', 'Obstetrícia', 'Pediatria', 'Saúde Coletiva', 'Psiquiatria', 'Medicina de Família e Comunidade'];
+  // Dados do plano de ensino
+  const areas = PLANO_ENSINO.map(a => a.nome);
+  const especialidadesDisponiveis = useMemo(() => {
+    if (!form.area) return [];
+    return getEspecialidades(form.area);
+  }, [form.area]);
+
+  const semanasDisponiveis = useMemo(() => {
+    if (!form.area || !form.especialidade) return [];
+    return getSemanasDisponiveis(form.area, form.especialidade);
+  }, [form.area, form.especialidade]);
+
+  const temasDisponiveis = useMemo(() => {
+    if (!form.area || !form.especialidade || !form.semana) return [];
+    return getTemasParaSemana(form.area, form.especialidade, form.semana);
+  }, [form.area, form.especialidade, form.semana]);
+
+  const semanaEspecial = useMemo(() => {
+    if (!form.semana) return null;
+    return isSemanaEspecial(form.semana);
+  }, [form.semana]);
+
+  // Reset cascading fields when parent changes
+  const handleAreaChange = (area: string) => {
+    setForm({ ...form, area, especialidade: '', tema: '', semana: 0 });
+  };
+
+  const handleEspecialidadeChange = (especialidade: string) => {
+    setForm({ ...form, especialidade, tema: '', semana: 0 });
+  };
+
+  const handleSemanaChange = (semana: number) => {
+    setForm({ ...form, semana, tema: '' });
+  };
 
   const handleSubmit = () => {
     if (!form.area || !form.tema || !form.dataBase) {
@@ -752,20 +793,66 @@ function CreateTemaView({ store, onBack, onCreated }: any) {
         <CardContent className="p-5 space-y-4">
           <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>Novo Tema de Estudo</h2>
           <p className="text-xs text-muted-foreground">
-            Ao criar um tema, o sistema calcula automaticamente as 10 revisões espaçadas (R1-R10) e os testes aleatórios entre elas.
+            Selecione a grande área e especialidade para ver os temas do plano de ensino. O sistema calcula automaticamente as 10 revisões espaçadas (R1-R10) e os testes aleatórios.
           </p>
 
+          {/* Grande Área */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Grande Área *</label>
+            <select
+              value={form.area}
+              onChange={(e) => handleAreaChange(e.target.value)}
+              className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">Selecione a grande área...</option>
+              {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+
+          {/* Especialidade — dropdown filtrado pela grande área */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Especialidade *</label>
+            {form.area && especialidadesDisponiveis.length > 0 ? (
+              <select
+                value={form.especialidade}
+                onChange={(e) => handleEspecialidadeChange(e.target.value)}
+                className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Selecione a especialidade...</option>
+                {especialidadesDisponiveis.map((e) => <option key={e} value={e}>{e}</option>)}
+              </select>
+            ) : (
+              <div className="w-full h-9 rounded-md border border-border bg-input/50 px-3 text-sm flex items-center text-muted-foreground">
+                {form.area ? 'Nenhuma especialidade cadastrada' : 'Selecione uma grande área primeiro'}
+              </div>
+            )}
+          </div>
+
+          {/* Semana — dropdown filtrado pela especialidade */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Semana *</label>
-              <input
-                type="number"
-                min={1}
-                max={24}
-                value={form.semana}
-                onChange={(e) => setForm({ ...form, semana: parseInt(e.target.value) || 1 })}
-                className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+              {form.especialidade && semanasDisponiveis.length > 0 ? (
+                <select
+                  value={form.semana || ''}
+                  onChange={(e) => handleSemanaChange(parseInt(e.target.value) || 0)}
+                  className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">Selecione...</option>
+                  {semanasDisponiveis.map((s) => {
+                    const especial = isSemanaEspecial(s);
+                    return (
+                      <option key={s} value={s} disabled={!!especial}>
+                        Semana {s}{especial ? ` — ${especial.label}` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <div className="w-full h-9 rounded-md border border-border bg-input/50 px-3 text-sm flex items-center text-muted-foreground">
+                  {form.especialidade ? 'Sem semanas' : 'Selecione a especialidade'}
+                </div>
+              )}
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Data Base *</label>
@@ -778,39 +865,87 @@ function CreateTemaView({ store, onBack, onCreated }: any) {
             </div>
           </div>
 
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Grande Área *</label>
-            <select
-              value={form.area}
-              onChange={(e) => setForm({ ...form, area: e.target.value })}
-              className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">Selecione...</option>
-              {areas.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
+          {/* Aviso de semana especial */}
+          {semanaEspecial && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
+              <p className="text-xs text-amber-400 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Semana {semanaEspecial.semana}: {semanaEspecial.label}
+              </p>
+            </div>
+          )}
 
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Especialidade</label>
-            <input
-              type="text"
-              value={form.especialidade}
-              onChange={(e) => setForm({ ...form, especialidade: e.target.value })}
-              placeholder="Ex: Cardiologia, Neurologia..."
-              className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
+          {/* Tema da Aula — dropdown com temas do plano de ensino */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Tema da Aula *</label>
-            <input
-              type="text"
-              value={form.tema}
-              onChange={(e) => setForm({ ...form, tema: e.target.value })}
-              placeholder="Ex: Semiologia Cardiovascular"
-              className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            />
+            {form.semana > 0 && temasDisponiveis.length > 0 ? (
+              <div className="space-y-2">
+                <select
+                  value={form.tema}
+                  onChange={(e) => setForm({ ...form, tema: e.target.value })}
+                  className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">Selecione o tema da aula...</option>
+                  {temasDisponiveis.map((t: TemaAula, i: number) => (
+                    <option key={i} value={t.nome}>{t.nome}</option>
+                  ))}
+                </select>
+                {/* Mostrar descrição do tema selecionado */}
+                {form.tema && (() => {
+                  const temaInfo = temasDisponiveis.find((t: TemaAula) => t.nome === form.tema);
+                  return temaInfo?.descricao ? (
+                    <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5">
+                      <p className="text-[11px] text-muted-foreground">
+                        <BookOpen className="w-3 h-3 inline mr-1 text-primary" />
+                        {temaInfo.descricao}
+                      </p>
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+            ) : form.semana > 0 ? (
+              <input
+                type="text"
+                value={form.tema}
+                onChange={(e) => setForm({ ...form, tema: e.target.value })}
+                placeholder="Digite o tema manualmente..."
+                className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            ) : (
+              <div className="w-full h-9 rounded-md border border-border bg-input/50 px-3 text-sm flex items-center text-muted-foreground">
+                Selecione a semana primeiro
+              </div>
+            )}
           </div>
+
+          {/* Temas disponíveis nesta semana (preview) */}
+          {form.semana > 0 && form.especialidade && temasDisponiveis.length > 0 && (
+            <div className="rounded-md border border-border/50 bg-muted/20 p-3">
+              <p className="text-[11px] font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                Conteúdo da Semana {form.semana} — {form.especialidade}
+              </p>
+              <div className="space-y-1">
+                {temasDisponiveis.map((t: TemaAula, i: number) => (
+                  <div
+                    key={i}
+                    onClick={() => setForm({ ...form, tema: t.nome })}
+                    className={`text-[11px] px-2 py-1.5 rounded cursor-pointer transition-colors ${
+                      form.tema === t.nome
+                        ? 'bg-primary/20 text-primary border border-primary/30'
+                        : 'text-foreground/80 hover:bg-muted/50'
+                    }`}
+                  >
+                    <span className="mr-1.5">{'•'}</span>
+                    {t.nome}
+                    {t.descricao && (
+                      <span className="text-muted-foreground ml-1">— {t.descricao}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
