@@ -6,10 +6,12 @@
  */
 
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlannerStore } from '@/hooks/usePlannerStore';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import VIDEOS from '@/data/videos.json';
 import {
   MOCK_METRICS,
   MOCK_SESSOES,
@@ -122,6 +124,7 @@ const ACHIEVEMENTS = [
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { temas } = usePlannerStore();
   const metrics = MOCK_METRICS;
   const firstName = user?.full_name.split(' ')[0] || 'Estudante';
 
@@ -129,6 +132,19 @@ export default function Dashboard() {
   const avisosImportantes = MOCK_AVISOS.filter(a => 
     a.prioridade === 'alta' || a.prioridade === 'urgente' || a.titulo.includes('material')
   );
+
+  // Buscar próxima sessão do Planner (não iniciada)
+  const proximaSessaoPlanner = temas
+    .filter(t => t.dataBase >= new Date().toISOString().split('T')[0])
+    .sort((a, b) => a.dataBase.localeCompare(b.dataBase))[0];
+
+  // Sugerir aula da Library baseado nos temas do Planner
+  const aulaSugerida = proximaSessaoPlanner
+    ? VIDEOS.videos.find((v: any) => 
+        v.tema?.toLowerCase().includes(proximaSessaoPlanner.tema.toLowerCase()) ||
+        v.especialidade?.toLowerCase().includes(proximaSessaoPlanner.especialidade.toLowerCase())
+      )
+    : VIDEOS.videos[0];
 
   return (
     <DashboardLayout title="Dashboard" subtitle={`${user?.periodo}º Período`}>
@@ -244,31 +260,33 @@ export default function Dashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {metrics.proximaSessao ? (
+                  {proximaSessaoPlanner ? (
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                         <Play className="w-5 h-5 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-sm">{metrics.proximaSessao.titulo}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">{metrics.proximaSessao.descricao}</p>
+                        <h3 className="font-semibold text-sm">{proximaSessaoPlanner.especialidade}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">{proximaSessaoPlanner.tema}</p>
                         <div className="flex items-center gap-3 mt-3 text-xs font-mono text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {metrics.proximaSessao.hora_inicio} · {metrics.proximaSessao.duracao_minutos}min
+                            <Calendar className="w-3 h-3" />
+                            {new Date(proximaSessaoPlanner.dataBase).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                           </span>
-                          <span className={`flex items-center gap-1 ${getStatusColor(metrics.proximaSessao.status)}`}>
+                          <span className="flex items-center gap-1 text-primary">
                             <span className="status-dot status-dot-active" />
-                            {getStatusLabel(metrics.proximaSessao.status)}
+                            Planejada
                           </span>
                         </div>
                       </div>
-                      <Button size="sm" className="shrink-0 bg-primary hover:bg-primary/90" onClick={() => toast.info('Iniciar sessão em breve!')}>
-                        Iniciar
-                      </Button>
+                      <Link href="/planner">
+                        <Button size="sm" className="shrink-0 bg-primary hover:bg-primary/90">
+                          Ir ao Planner
+                        </Button>
+                      </Link>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Nenhuma sessão planejada para hoje.</p>
+                    <p className="text-sm text-muted-foreground">Nenhuma sessão planejada. Crie um tema no Planner para começar!</p>
                   )}
                 </CardContent>
               </Card>
@@ -455,6 +473,35 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Aula Sugerida da Library */}
+            {aulaSugerida && (
+              <motion.div variants={itemVariants}>
+                <Card className="card-famp border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+                      🎓 Aula Sugerida
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-primary font-mono mb-0.5">{(aulaSugerida as any).especialidade}</p>
+                        <h4 className="text-xs font-semibold line-clamp-2">{(aulaSugerida as any).title}</h4>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {(aulaSugerida as any).duration}min · {(aulaSugerida as any).tema}
+                        </p>
+                      </div>
+                    </div>
+                    <Link href="/library">
+                      <Button size="sm" variant="outline" className="w-full mt-3">
+                        Ver na Biblioteca
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
 
             {/* Recent Sessions */}
             <motion.div variants={itemVariants}>
