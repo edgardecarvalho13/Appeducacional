@@ -55,8 +55,10 @@ import {
   getSemanasDisponiveis,
   getTemasParaSemana,
   isSemanaEspecial,
+  getAllSemanasDisponiveis,
+  getAllTemasForSemana,
 } from '@/data/plano-ensino';
-import type { TemaAula } from '@/data/plano-ensino';
+import type { TemaAula, TemaCompleto } from '@/data/plano-ensino';
 
 // ─── Constants ───
 const ETAPA_LABELS: Record<EtapaEstudo, { label: string; icon: React.ElementType; color: string }> = {
@@ -75,7 +77,7 @@ const STATUS_CONFIG: Record<PlannerItemStatus, { label: string; color: string; b
   pulado: { label: 'Pulado', color: 'text-muted-foreground/50', bg: 'bg-muted/30' },
 };
 
-type ViewMode = 'overview' | 'tema_detail' | 'create_tema' | 'session' | 'timeline' | 'history';
+type ViewMode = 'overview' | 'tema_detail' | 'create_tema' | 'timeline' | 'history';
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -100,7 +102,7 @@ export default function PlannerPage() {
   const [view, setView] = useState<ViewMode>('overview');
   const [selectedTemaId, setSelectedTemaId] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
-  const [activeSessaoId, setActiveSessaoId] = useState<string | null>(null);
+
 
   const stats = store.getStats();
   const weeks = store.getWeeks();
@@ -115,7 +117,7 @@ export default function PlannerPage() {
   const goBack = useCallback(() => {
     setView('overview');
     setSelectedTemaId(null);
-    setActiveSessaoId(null);
+
   }, []);
 
   return (
@@ -141,10 +143,6 @@ export default function PlannerPage() {
           store={store}
           temaId={selectedTemaId}
           onBack={goBack}
-          onStartSession={(id: string) => {
-            setActiveSessaoId(id);
-            setView('session');
-          }}
         />
       )}
       {view === 'create_tema' && (
@@ -153,14 +151,7 @@ export default function PlannerPage() {
           setView('tema_detail');
         }} />
       )}
-      {view === 'session' && activeSessaoId && selectedTemaId && (
-        <SessionView
-          store={store}
-          sessaoId={activeSessaoId}
-          temaId={selectedTemaId}
-          onEnd={goBack}
-        />
-      )}
+
       {view === 'timeline' && (
         <TimelineView store={store} onBack={goBack} onOpenTema={openTemaDetail} />
       )}
@@ -425,27 +416,18 @@ function OverviewView({
 // ═══════════════════════════════════════════════════════════════
 // TEMA DETAIL VIEW
 // ═══════════════════════════════════════════════════════════════
-function TemaDetailView({ store, temaId, onBack, onStartSession }: any) {
+function TemaDetailView({ store, temaId, onBack }: any) {
   const tema = store.temas.find((t: any) => t.id === temaId);
   const etapas = store.getEtapasForTema(temaId);
   const revisoes = store.getRevisoesForTema(temaId);
   const testes = store.getTestesForTema(temaId);
-  const sessoes = store.getSessoesForTema(temaId);
-  const [activeTab, setActiveTab] = useState<'etapas' | 'revisoes' | 'sessoes'>('etapas');
+  const [activeTab, setActiveTab] = useState<'etapas' | 'revisoes'>('etapas');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!tema) return null;
 
   const concluidas = etapas.filter((e: any) => e.status === 'concluido').length;
   const progresso = etapas.length > 0 ? Math.round((concluidas / etapas.length) * 100) : 0;
-
-  const handleStartSession = () => {
-    const sessao = store.startSessao(temaId);
-    if (sessao) {
-      onStartSession(sessao.id);
-      toast.success('Sessão de estudo iniciada!');
-    }
-  };
 
   const handleDelete = () => {
     store.deleteTema(temaId);
@@ -502,7 +484,6 @@ function TemaDetailView({ store, temaId, onBack, onStartSession }: any) {
         {[
           { key: 'etapas', label: 'Etapas', icon: ListChecks, count: `${concluidas}/${etapas.length}` },
           { key: 'revisoes', label: 'Revisões & TAs', icon: RotateCcw, count: `${revisoes.filter((r: any) => r.status === 'concluido').length + testes.filter((t: any) => t.status === 'concluido').length}/${revisoes.length + testes.length}` },
-          { key: 'sessoes', label: 'Sessões', icon: Timer, count: String(sessoes.length) },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -678,44 +659,7 @@ function TemaDetailView({ store, temaId, onBack, onStartSession }: any) {
         );
       })()}
 
-      {activeTab === 'sessoes' && (
-        <div className="space-y-2">
-          {sessoes.length === 0 ? (
-            <Card className="card-famp">
-              <CardContent className="p-6 text-center">
-                <Timer className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Nenhuma sessão registrada</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Inicie uma sessão de 90 minutos para começar.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            sessoes.map((s: any) => (
-              <Card key={s.id} className="card-famp">
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium">{s.titulo}</p>
-                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                      s.status === 'concluida' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'
-                    }`}>
-                      {s.status === 'concluida' ? 'Concluída' : 'Em andamento'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-mono">
-                    <span>{formatDate(s.dataInicio.split('T')[0])}</span>
-                    <span>· {s.duracaoReal ? formatMinutes(s.duracaoReal) : formatMinutes(s.duracaoMinutos)}</span>
-                    <span>· {s.etapasCompletadas.length} etapas</span>
-                  </div>
-                  {s.notas && (
-                    <p className="text-xs text-muted-foreground mt-2 bg-muted/20 rounded p-2 border border-border/30">
-                      {s.notas}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
-      )}
+
     </div>
   );
 }
@@ -733,39 +677,61 @@ function CreateTemaView({ store, onBack, onCreated }: any) {
     observacoes: '',
   });
 
-  // Dados do plano de ensino
-  const areas = PLANO_ENSINO.map(a => a.nome);
+  // Dados do plano de ensino - Semana primeiro
+  const todasSemanas = useMemo(() => getAllSemanasDisponiveis(), []);
+
+  // Todos os temas da semana selecionada (todas as áreas/especialidades)
+  const temasCompletos = useMemo(() => {
+    if (!form.semana) return [];
+    return getAllTemasForSemana(form.semana);
+  }, [form.semana]);
+
+  // Áreas disponíveis para a semana selecionada
+  const areasDisponiveis = useMemo(() => {
+    const set = new Set(temasCompletos.map((t: TemaCompleto) => t.area));
+    return Array.from(set);
+  }, [temasCompletos]);
+
+  // Especialidades filtradas pela área selecionada
   const especialidadesDisponiveis = useMemo(() => {
     if (!form.area) return [];
-    return getEspecialidades(form.area);
-  }, [form.area]);
+    const set = new Set(
+      temasCompletos.filter((t: TemaCompleto) => t.area === form.area).map((t: TemaCompleto) => t.especialidade)
+    );
+    return Array.from(set);
+  }, [temasCompletos, form.area]);
 
-  const semanasDisponiveis = useMemo(() => {
-    if (!form.area || !form.especialidade) return [];
-    return getSemanasDisponiveis(form.area, form.especialidade);
-  }, [form.area, form.especialidade]);
-
+  // Temas filtrados pela área + especialidade
   const temasDisponiveis = useMemo(() => {
-    if (!form.area || !form.especialidade || !form.semana) return [];
-    return getTemasParaSemana(form.area, form.especialidade, form.semana);
-  }, [form.area, form.especialidade, form.semana]);
+    return temasCompletos
+      .filter((t: TemaCompleto) => {
+        if (form.area && t.area !== form.area) return false;
+        if (form.especialidade && t.especialidade !== form.especialidade) return false;
+        return true;
+      });
+  }, [temasCompletos, form.area, form.especialidade]);
 
   const semanaEspecial = useMemo(() => {
     if (!form.semana) return null;
     return isSemanaEspecial(form.semana);
   }, [form.semana]);
 
+  // Temas já adicionados pelo aluno (para impedir duplicidade)
+  const temasExistentes = useMemo(() => {
+    return store.temas.map((t: any) => `${t.area}::${t.especialidade}::${t.tema}`);
+  }, [store.temas]);
+
   // Reset cascading fields when parent changes
+  const handleSemanaChange = (semana: number) => {
+    setForm({ ...form, semana, area: '', especialidade: '', tema: '' });
+  };
+
   const handleAreaChange = (area: string) => {
-    setForm({ ...form, area, especialidade: '', tema: '', semana: 0 });
+    setForm({ ...form, area, especialidade: '', tema: '' });
   };
 
   const handleEspecialidadeChange = (especialidade: string) => {
-    setForm({ ...form, especialidade, tema: '', semana: 0 });
-  };
-
-  const handleSemanaChange = (semana: number) => {
-    setForm({ ...form, semana, tema: '' });
+    setForm({ ...form, especialidade, tema: '' });
   };
 
   const handleSubmit = () => {
@@ -773,7 +739,17 @@ function CreateTemaView({ store, onBack, onCreated }: any) {
       toast.error('Preencha os campos obrigatórios');
       return;
     }
+    // Verificar duplicidade
+    const key = `${form.area}::${form.especialidade}::${form.tema}`;
+    if (temasExistentes.includes(key)) {
+      toast.error('Este tema já foi adicionado ao seu planejamento!');
+      return;
+    }
     const tema = store.addTema(form);
+    if (!tema) {
+      toast.error('Este tema já foi adicionado ao seu planejamento!');
+      return;
+    }
     toast.success('Tema adicionado! Revisões e TAs calculados automaticamente.');
     onCreated(tema.id);
   };
@@ -788,66 +764,28 @@ function CreateTemaView({ store, onBack, onCreated }: any) {
         <CardContent className="p-5 space-y-4">
           <h2 className="text-lg font-bold" style={{ fontFamily: 'var(--font-display)' }}>Novo Tema de Estudo</h2>
           <p className="text-xs text-muted-foreground">
-            Selecione a grande área e especialidade para ver os temas do plano de ensino. O sistema calcula automaticamente as 10 revisões espaçadas (R1-R10) e os testes aleatórios.
+            Selecione a semana para ver os temas disponíveis. O sistema calcula automaticamente as 10 revisões espaçadas (R1-R10) e os testes aleatórios.
           </p>
 
-          {/* Grande Área */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Grande Área *</label>
-            <select
-              value={form.area}
-              onChange={(e) => handleAreaChange(e.target.value)}
-              className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">Selecione a grande área...</option>
-              {areas.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
-
-          {/* Especialidade — dropdown filtrado pela grande área */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Especialidade *</label>
-            {form.area && especialidadesDisponiveis.length > 0 ? (
-              <select
-                value={form.especialidade}
-                onChange={(e) => handleEspecialidadeChange(e.target.value)}
-                className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="">Selecione a especialidade...</option>
-                {especialidadesDisponiveis.map((e) => <option key={e} value={e}>{e}</option>)}
-              </select>
-            ) : (
-              <div className="w-full h-9 rounded-md border border-border bg-input/50 px-3 text-sm flex items-center text-muted-foreground">
-                {form.area ? 'Nenhuma especialidade cadastrada' : 'Selecione uma grande área primeiro'}
-              </div>
-            )}
-          </div>
-
-          {/* Semana — dropdown filtrado pela especialidade */}
+          {/* Semana — PRIMEIRO campo */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Semana *</label>
-              {form.especialidade && semanasDisponiveis.length > 0 ? (
-                <select
-                  value={form.semana || ''}
-                  onChange={(e) => handleSemanaChange(parseInt(e.target.value) || 0)}
-                  className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">Selecione...</option>
-                  {semanasDisponiveis.map((s) => {
-                    const especial = isSemanaEspecial(s);
-                    return (
-                      <option key={s} value={s} disabled={!!especial}>
-                        Semana {s}{especial ? ` — ${especial.label}` : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              ) : (
-                <div className="w-full h-9 rounded-md border border-border bg-input/50 px-3 text-sm flex items-center text-muted-foreground">
-                  {form.especialidade ? 'Sem semanas' : 'Selecione a especialidade'}
-                </div>
-              )}
+              <select
+                value={form.semana || ''}
+                onChange={(e) => handleSemanaChange(parseInt(e.target.value) || 0)}
+                className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">Selecione a semana...</option>
+                {todasSemanas.map((s) => {
+                  const especial = isSemanaEspecial(s);
+                  return (
+                    <option key={s} value={s} disabled={!!especial}>
+                      Semana {s}{especial ? ` — ${especial.label}` : ''}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Data Base *</label>
@@ -870,29 +808,81 @@ function CreateTemaView({ store, onBack, onCreated }: any) {
             </div>
           )}
 
-          {/* Tema da Aula — dropdown com temas do plano de ensino */}
+          {/* Grande Área — filtrado pela semana */}
+          {form.semana > 0 && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Grande Área *</label>
+              {areasDisponiveis.length > 0 ? (
+                <select
+                  value={form.area}
+                  onChange={(e) => handleAreaChange(e.target.value)}
+                  className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">Selecione a grande área...</option>
+                  {areasDisponiveis.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              ) : (
+                <div className="w-full h-9 rounded-md border border-border bg-input/50 px-3 text-sm flex items-center text-muted-foreground">
+                  Nenhuma área com temas nesta semana
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Especialidade — filtrado pela área + semana */}
+          {form.semana > 0 && form.area && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Especialidade *</label>
+              {especialidadesDisponiveis.length > 0 ? (
+                <select
+                  value={form.especialidade}
+                  onChange={(e) => handleEspecialidadeChange(e.target.value)}
+                  className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">Selecione a especialidade...</option>
+                  {especialidadesDisponiveis.map((e) => <option key={e} value={e}>{e}</option>)}
+                </select>
+              ) : (
+                <div className="w-full h-9 rounded-md border border-border bg-input/50 px-3 text-sm flex items-center text-muted-foreground">
+                  Nenhuma especialidade nesta semana
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tema da Aula — dropdown com temas filtrados */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Tema da Aula *</label>
             {form.semana > 0 && temasDisponiveis.length > 0 ? (
               <div className="space-y-2">
                 <select
                   value={form.tema}
-                  onChange={(e) => setForm({ ...form, tema: e.target.value })}
+                  onChange={(e) => {
+                    const selected = temasDisponiveis.find((t: TemaCompleto) => t.tema.nome === e.target.value);
+                    if (selected) {
+                      setForm({ ...form, tema: selected.tema.nome, area: selected.area, especialidade: selected.especialidade });
+                    }
+                  }}
                   className="w-full h-9 rounded-md border border-border bg-input px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   <option value="">Selecione o tema da aula...</option>
-                  {temasDisponiveis.map((t: TemaAula, i: number) => (
-                    <option key={i} value={t.nome}>{t.nome}</option>
-                  ))}
+                  {temasDisponiveis.map((t: TemaCompleto, i: number) => {
+                    const jaExiste = temasExistentes.includes(`${t.area}::${t.especialidade}::${t.tema.nome}`);
+                    return (
+                      <option key={i} value={t.tema.nome} disabled={jaExiste}>
+                        {t.tema.nome}{jaExiste ? ' (já adicionado)' : ''} — {t.especialidade}
+                      </option>
+                    );
+                  })}
                 </select>
                 {/* Mostrar descrição do tema selecionado */}
                 {form.tema && (() => {
-                  const temaInfo = temasDisponiveis.find((t: TemaAula) => t.nome === form.tema);
-                  return temaInfo?.descricao ? (
+                  const temaInfo = temasDisponiveis.find((t: TemaCompleto) => t.tema.nome === form.tema);
+                  return temaInfo?.tema.descricao ? (
                     <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5">
                       <p className="text-[11px] text-muted-foreground">
                         <BookOpen className="w-3 h-3 inline mr-1 text-primary" />
-                        {temaInfo.descricao}
+                        {temaInfo.tema.descricao}
                       </p>
                     </div>
                   ) : null;
@@ -913,31 +903,41 @@ function CreateTemaView({ store, onBack, onCreated }: any) {
             )}
           </div>
 
-          {/* Temas disponíveis nesta semana (preview) */}
-          {form.semana > 0 && form.especialidade && temasDisponiveis.length > 0 && (
+          {/* Preview: Todos os temas da semana */}
+          {form.semana > 0 && temasCompletos.length > 0 && (
             <div className="rounded-md border border-border/50 bg-muted/20 p-3">
               <p className="text-[11px] font-semibold text-muted-foreground mb-2 flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                Conteúdo da Semana {form.semana} — {form.especialidade}
+                Conteúdo da Semana {form.semana}
               </p>
               <div className="space-y-1">
-                {temasDisponiveis.map((t: TemaAula, i: number) => (
-                  <div
-                    key={i}
-                    onClick={() => setForm({ ...form, tema: t.nome })}
-                    className={`text-[11px] px-2 py-1.5 rounded cursor-pointer transition-colors ${
-                      form.tema === t.nome
-                        ? 'bg-primary/20 text-primary border border-primary/30'
-                        : 'text-foreground/80 hover:bg-muted/50'
-                    }`}
-                  >
-                    <span className="mr-1.5">{'•'}</span>
-                    {t.nome}
-                    {t.descricao && (
-                      <span className="text-muted-foreground ml-1">— {t.descricao}</span>
-                    )}
-                  </div>
-                ))}
+                {temasCompletos.map((t: TemaCompleto, i: number) => {
+                  const jaExiste = temasExistentes.includes(`${t.area}::${t.especialidade}::${t.tema.nome}`);
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        if (!jaExiste) {
+                          setForm({ ...form, tema: t.tema.nome, area: t.area, especialidade: t.especialidade });
+                        }
+                      }}
+                      className={`text-[11px] px-2 py-1.5 rounded transition-colors ${
+                        jaExiste
+                          ? 'opacity-40 cursor-not-allowed line-through'
+                          : form.tema === t.tema.nome
+                            ? 'bg-primary/20 text-primary border border-primary/30 cursor-pointer'
+                            : 'text-foreground/80 hover:bg-muted/50 cursor-pointer'
+                      }`}
+                    >
+                      <span className="text-muted-foreground mr-1">{t.especialidade} ·</span>
+                      {t.tema.nome}
+                      {jaExiste && <span className="ml-1 text-amber-400">(já adicionado)</span>}
+                      {t.tema.descricao && !jaExiste && (
+                        <span className="text-muted-foreground ml-1">— {t.tema.descricao}</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

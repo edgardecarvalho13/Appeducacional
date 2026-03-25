@@ -281,9 +281,24 @@ export function usePlannerStore() {
     }
   }, []); // eslint-disable-line
 
+  // ─── Duplicate check ───
+  const isTemaExistente = useCallback(
+    (area: string, especialidade: string, tema: string): boolean => {
+      return data.temas.some(
+        (t) => t.area === area && t.especialidade === especialidade && t.tema === tema
+      );
+    },
+    [data.temas]
+  );
+
   // ─── CRUD: Temas ───
   const addTema = useCallback(
     (input: Omit<PlannerTema, 'id' | 'createdAt' | 'updatedAt'>) => {
+      // Impedir duplicidade
+      if (data.temas.some(t => t.area === input.area && t.especialidade === input.especialidade && t.tema === input.tema)) {
+        return null; // Tema já existe
+      }
+
       const now = new Date().toISOString();
       const tema: PlannerTema = { ...input, id: generateId(), createdAt: now, updatedAt: now };
       const etapas = criarEtapasPadrao(tema.id);
@@ -300,7 +315,7 @@ export function usePlannerStore() {
 
       return tema;
     },
-    []
+    [data.temas]
   );
 
   const updateTema = useCallback(
@@ -605,6 +620,7 @@ export function usePlannerStore() {
 
     // Actions
     addTema,
+    isTemaExistente,
     updateTema,
     deleteTema,
     updateEtapa,

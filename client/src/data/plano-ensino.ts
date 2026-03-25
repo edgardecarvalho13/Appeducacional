@@ -449,3 +449,36 @@ export function isSemanaEspecial(semana: number): SemanaPlano | undefined {
 
 /** Total de semanas no semestre */
 export const TOTAL_SEMANAS = 21;
+
+/** Helper: obter todas as semanas disponíveis (de todas as áreas/especialidades) */
+export function getAllSemanasDisponiveis(): number[] {
+  const semanas = new Set<number>();
+  PLANO_ENSINO.forEach(area => {
+    area.especialidades.forEach(esp => {
+      esp.semanas.forEach(s => semanas.add(s.semana));
+    });
+  });
+  return Array.from(semanas).sort((a, b) => a - b);
+}
+
+/** Helper: obter todos os temas de uma semana (todas as áreas e especialidades) */
+export interface TemaCompleto {
+  area: string;
+  especialidade: string;
+  tema: TemaAula;
+}
+
+export function getAllTemasForSemana(semana: number): TemaCompleto[] {
+  const result: TemaCompleto[] = [];
+  PLANO_ENSINO.forEach(area => {
+    area.especialidades.forEach(esp => {
+      const sem = esp.semanas.find(s => s.semana === semana);
+      if (sem) {
+        sem.temas.forEach(t => {
+          result.push({ area: area.nome, especialidade: esp.nome, tema: t });
+        });
+      }
+    });
+  });
+  return result;
+}
