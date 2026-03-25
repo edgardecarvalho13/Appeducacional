@@ -41,9 +41,10 @@ import {
   X,
   Check,
   Pause,
-  SkipForward,
   StickyNote,
   Save,
+  ExternalLink,
+  Link2,
 } from 'lucide-react';
 import { usePlannerStore } from '@/hooks/usePlannerStore';
 import type { PlannerItemStatus, EtapaEstudo } from '@/lib/types';
@@ -460,9 +461,6 @@ function TemaDetailView({ store, temaId, onBack, onStartSession }: any) {
           <ArrowLeft className="w-3 h-3" /> Voltar
         </button>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleStartSession}>
-            <Play className="w-3.5 h-3.5" /> Iniciar Sessão
-          </Button>
           {showDeleteConfirm ? (
             <div className="flex gap-1">
               <Button variant="destructive" size="sm" className="text-xs" onClick={handleDelete}>Confirmar</Button>
@@ -533,155 +531,152 @@ function TemaDetailView({ store, temaId, onBack, onStartSession }: any) {
             const Icon = cfg.icon;
             const statusCfg = STATUS_CONFIG[etapa.status as PlannerItemStatus];
 
+            // Determinar se a etapa tem link
+            const hasLink = etapa.tipo === 'questoes_pre' || etapa.tipo === 'questoes_pos' || etapa.tipo === 'flashcards';
+            const linkLabel = etapa.tipo === 'questoes_pre'
+              ? '10 questões (3 fáceis, 5 médias, 2 difíceis)'
+              : etapa.tipo === 'questoes_pos'
+              ? '20 questões aleatórias sobre o tema'
+              : etapa.tipo === 'flashcards'
+              ? '20 flashcards inteligentes'
+              : '';
+            const linkTarget = etapa.tipo === 'flashcards' ? '/flashcards' : '/quest';
+
             return (
               <Card key={etapa.id} className="card-famp">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-md flex items-center justify-center ${
-                    etapa.status === 'concluido' ? 'bg-emerald-500/15' : 'bg-muted/30'
-                  }`}>
-                    <Icon className={`w-4 h-4 ${etapa.status === 'concluido' ? 'text-emerald-400' : cfg.color}`} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{cfg.label}</p>
-                    <div className="flex items-center gap-2 text-[10px]">
-                      <span className={statusCfg.color}>{statusCfg.label}</span>
-                      {etapa.valor !== undefined && etapa.valor !== null && (
-                        <span className="font-mono text-muted-foreground">· {etapa.valor} questões</span>
-                      )}
-                      {etapa.completadoEm && (
-                        <span className="font-mono text-muted-foreground">· {formatDate(etapa.completadoEm)}</span>
-                      )}
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-md flex items-center justify-center ${
+                      etapa.status === 'concluido' ? 'bg-emerald-500/15' : 'bg-muted/30'
+                    }`}>
+                      <Icon className={`w-4 h-4 ${etapa.status === 'concluido' ? 'text-emerald-400' : cfg.color}`} />
                     </div>
-                  </div>
-                  {etapa.status !== 'concluido' && (
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{cfg.label}</p>
+                      <div className="flex items-center gap-2 text-[10px]">
+                        <span className={statusCfg.color}>{statusCfg.label}</span>
+                        {etapa.valor !== undefined && etapa.valor !== null && (
+                          <span className="font-mono text-muted-foreground">· {etapa.valor} questões</span>
+                        )}
+                        {etapa.completadoEm && (
+                          <span className="font-mono text-muted-foreground">· {formatDate(etapa.completadoEm)}</span>
+                        )}
+                      </div>
+                    </div>
                     <Button
-                      variant="outline"
+                      variant={etapa.status === 'concluido' ? 'ghost' : 'outline'}
                       size="sm"
-                      className="text-xs gap-1 h-7"
+                      className={`text-xs gap-1 h-7 ${
+                        etapa.status === 'concluido'
+                          ? 'text-emerald-400 hover:text-red-400 hover:bg-red-500/5'
+                          : ''
+                      }`}
                       onClick={() => {
-                        store.completeEtapa(etapa.id);
-                        toast.success(`${cfg.label} concluído!`);
+                        store.toggleEtapa(etapa.id);
+                        toast.success(
+                          etapa.status === 'concluido'
+                            ? `${cfg.label} desmarcado`
+                            : `${cfg.label} concluído!`
+                        );
                       }}
                     >
-                      <Check className="w-3 h-3" /> Concluir
-                    </Button>
-                  )}
-                  {etapa.status === 'concluido' && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {activeTab === 'revisoes' && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Revisões Espaçadas (R1-R10)</h4>
-          {revisoes.map((rev: any) => {
-            const statusCfg = STATUS_CONFIG[rev.status as PlannerItemStatus];
-            return (
-              <Card key={rev.id} className="card-famp">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold font-mono ${
-                    rev.status === 'concluido' ? 'bg-emerald-500/15 text-emerald-400'
-                    : rev.status === 'atrasado' ? 'bg-red-500/15 text-red-400'
-                    : 'bg-primary/10 text-primary'
-                  }`}>
-                    {rev.tipo}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">{rev.tipo}</p>
-                      <span className={`text-[10px] ${statusCfg.color}`}>{statusCfg.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
-                      <span>{formatDate(rev.dataAgendada)}</span>
-                      {rev.tecnicaUsada && <span>· {rev.tecnicaUsada}</span>}
-                      {rev.valor && <span>· {rev.valor} questões</span>}
-                    </div>
-                  </div>
-                  {(rev.status === 'pendente' || rev.status === 'atrasado') && (
-                    <div className="flex gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs gap-1 h-7"
-                        onClick={() => {
-                          store.completeRevisao(rev.id, 'questões');
-                          toast.success(`${rev.tipo} concluída!`);
-                        }}
-                      >
-                        <Check className="w-3 h-3" /> Feito
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs h-7 text-muted-foreground"
-                        onClick={() => {
-                          store.skipRevisao(rev.id);
-                          toast.info(`${rev.tipo} pulada`);
-                        }}
-                      >
-                        <SkipForward className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
-                  {rev.status === 'concluido' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-                  {rev.status === 'pulado' && <SkipForward className="w-4 h-4 text-muted-foreground/40 shrink-0" />}
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          {testes.length > 0 && (
-            <>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-4 mb-2">Testes Aleatórios</h4>
-              {testes.map((ta: any) => {
-                const statusCfg = STATUS_CONFIG[ta.status as PlannerItemStatus];
-                return (
-                  <Card key={ta.id} className="card-famp">
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold font-mono ${
-                        ta.status === 'concluido' ? 'bg-emerald-500/15 text-emerald-400'
-                        : ta.status === 'atrasado' ? 'bg-red-500/15 text-red-400'
-                        : 'bg-purple-500/10 text-purple-400'
-                      }`}>
-                        TA{ta.numero}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium">Teste Aleatório {ta.numero}</p>
-                          <span className={`text-[10px] ${statusCfg.color}`}>{statusCfg.label}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
-                          <span>{formatDate(ta.dataAgendada)}</span>
-                          {ta.questoesFeitas && <span>· {ta.questoesFeitas} questões</span>}
-                        </div>
-                      </div>
-                      {(ta.status === 'pendente' || ta.status === 'atrasado') && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs gap-1 h-7"
-                          onClick={() => {
-                            store.completeTeste(ta.id, 10);
-                            toast.success(`TA${ta.numero} concluído!`);
-                          }}
-                        >
-                          <Check className="w-3 h-3" /> Feito
-                        </Button>
+                      {etapa.status === 'concluido' ? (
+                        <><CheckCircle2 className="w-3 h-3" /> Concluído</>
+                      ) : (
+                        <><Check className="w-3 h-3" /> Concluir</>
                       )}
-                      {ta.status === 'concluido' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </>
-          )}
+                    </Button>
+                  </div>
+                  {hasLink && (
+                    <div className="ml-11 mt-2">
+                      <a
+                        href={linkTarget}
+                        className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:text-primary/80 transition-colors bg-primary/5 hover:bg-primary/10 px-2.5 py-1.5 rounded-md border border-primary/20"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        {linkLabel}
+                      </a>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
+
+      {activeTab === 'revisoes' && (() => {
+        // Intercalar R e TA em ordem: R1, TA1, R2, TA2, ...
+        const intercalado: Array<{ type: 'revisao' | 'teste'; data: any }> = [];
+        const maxLen = Math.max(revisoes.length, testes.length);
+        for (let i = 0; i < maxLen; i++) {
+          if (i < revisoes.length) intercalado.push({ type: 'revisao', data: revisoes[i] });
+          if (i < testes.length) intercalado.push({ type: 'teste', data: testes[i] });
+        }
+
+        return (
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Revisões & Testes Aleatórios</h4>
+            {intercalado.map((item) => {
+              const isRevisao = item.type === 'revisao';
+              const entry = item.data;
+              const statusCfg = STATUS_CONFIG[entry.status as PlannerItemStatus];
+              const label = isRevisao ? entry.tipo : `TA${entry.numero}`;
+              const fullLabel = isRevisao ? entry.tipo : `Teste Aleatório ${entry.numero}`;
+
+              return (
+                <Card key={entry.id} className="card-famp">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold font-mono ${
+                      entry.status === 'concluido' ? 'bg-emerald-500/15 text-emerald-400'
+                      : entry.status === 'atrasado' ? 'bg-red-500/15 text-red-400'
+                      : isRevisao ? 'bg-primary/10 text-primary' : 'bg-purple-500/10 text-purple-400'
+                    }`}>
+                      {label}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">{fullLabel}</p>
+                        <span className={`text-[10px] ${statusCfg.color}`}>{statusCfg.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+                        <span>{formatDate(entry.dataAgendada)}</span>
+                        {isRevisao && entry.tecnicaUsada && <span>· {entry.tecnicaUsada}</span>}
+                        {isRevisao && entry.valor && <span>· {entry.valor} questões</span>}
+                        {!isRevisao && entry.questoesFeitas && <span>· {entry.questoesFeitas} questões</span>}
+                      </div>
+                    </div>
+                    <Button
+                      variant={entry.status === 'concluido' ? 'ghost' : 'outline'}
+                      size="sm"
+                      className={`text-xs gap-1 h-7 ${
+                        entry.status === 'concluido'
+                          ? 'text-emerald-400 hover:text-red-400 hover:bg-red-500/5'
+                          : ''
+                      }`}
+                      onClick={() => {
+                        if (isRevisao) {
+                          store.toggleRevisao(entry.id);
+                          toast.success(entry.status === 'concluido' ? `${label} desmarcada` : `${label} concluída!`);
+                        } else {
+                          store.toggleTeste(entry.id);
+                          toast.success(entry.status === 'concluido' ? `${label} desmarcado` : `${label} concluído!`);
+                        }
+                      }}
+                    >
+                      {entry.status === 'concluido' ? (
+                        <><CheckCircle2 className="w-3 h-3" /> Concluído</>
+                      ) : (
+                        <><Check className="w-3 h-3" /> Feito</>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {activeTab === 'sessoes' && (
         <div className="space-y-2">
@@ -1084,10 +1079,12 @@ function SessionView({ store, sessaoId, temaId, onEnd }: any) {
                 >
                   <button
                     onClick={() => {
-                      if (etapa.status !== 'concluido') {
-                        store.completeEtapa(etapa.id);
-                        toast.success(`${cfg.label} concluído!`);
-                      }
+                      store.toggleEtapa(etapa.id);
+                      toast.success(
+                        etapa.status === 'concluido'
+                          ? `${cfg.label} desmarcado`
+                          : `${cfg.label} concluído!`
+                      );
                     }}
                     className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
                       etapa.status === 'concluido'

@@ -347,6 +347,21 @@ export function usePlannerStore() {
     }));
   }, []);
 
+  const toggleEtapa = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      etapas: prev.etapas.map((e) =>
+        e.id === id
+          ? {
+              ...e,
+              status: e.status === 'concluido' ? 'pendente' as PlannerItemStatus : 'concluido' as PlannerItemStatus,
+              completadoEm: e.status === 'concluido' ? undefined : today(),
+            }
+          : e
+      ),
+    }));
+  }, []);
+
   // ─── CRUD: Revisões ───
   const completeRevisao = useCallback(
     (id: string, tecnica?: string, valor?: number) => {
@@ -368,11 +383,32 @@ export function usePlannerStore() {
     []
   );
 
-  const skipRevisao = useCallback((id: string) => {
+  const toggleRevisao = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
       revisoes: prev.revisoes.map((r) =>
-        r.id === id ? { ...r, status: 'pulado' as PlannerItemStatus } : r
+        r.id === id
+          ? {
+              ...r,
+              status: r.status === 'concluido' ? 'pendente' as PlannerItemStatus : 'concluido' as PlannerItemStatus,
+              completadoEm: r.status === 'concluido' ? undefined : today(),
+            }
+          : r
+      ),
+    }));
+  }, []);
+
+  const toggleTeste = useCallback((id: string) => {
+    setData((prev) => ({
+      ...prev,
+      testes: prev.testes.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              status: t.status === 'concluido' ? 'pendente' as PlannerItemStatus : 'concluido' as PlannerItemStatus,
+              completadoEm: t.status === 'concluido' ? undefined : today(),
+            }
+          : t
       ),
     }));
   }, []);
@@ -574,7 +610,9 @@ export function usePlannerStore() {
     updateEtapa,
     completeEtapa,
     completeRevisao,
-    skipRevisao,
+    toggleEtapa,
+    toggleRevisao,
+    toggleTeste,
     completeTeste,
     startSessao,
     completeSessao,
