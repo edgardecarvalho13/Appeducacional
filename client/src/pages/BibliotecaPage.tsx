@@ -2,14 +2,17 @@
  * FAMP Academy — Biblioteca de Videoaulas
  * Design: "Command Center" — Dark theme com cards de vídeo, filtros por disciplina e tema,
  * playlists de professor por período, avaliação com estrelas e comentários.
- * Player YouTube embedado.
+ * Player YouTube embedado. Drag-and-drop para reordenar vídeos nas playlists.
+ * Controle de acesso: apenas professores/coordenação/admin podem criar playlists.
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Search, Play, Clock, ChevronLeft, X, Star, Eye, BookOpen,
-  Filter, MessageSquare, ChevronDown, ChevronUp, List, ThumbsUp
+  Filter, MessageSquare, ChevronDown, ChevronUp, List, ThumbsUp,
+  GripVertical
 } from 'lucide-react';
 import videosData from '@/data/videos.json';
 
@@ -90,10 +93,49 @@ function saveRating(rating: VideoRating) {
   localStorage.setItem(RATINGS_KEY, JSON.stringify(all));
 }
 
+// ─── DEFAULT PLAYLISTS ───
+const DEFAULT_PLAYLISTS: Playlist[] = [
+  {
+    id: 'pl-default-1',
+    nome: 'Fundamentos de Anatomia e Fisiologia',
+    descricao: 'Playlist essencial para o 1º período: termos anatômicos, sistemas básicos e introdução à fisiologia celular.',
+    periodo: 1,
+    professor: 'Prof. Edgar de Carvalho',
+    videos: ['v3', 'v24', 'v6', 'v7', 'v12', 'v15'],
+    createdAt: '2026-01-15T10:00:00.000Z',
+  },
+  {
+    id: 'pl-default-2',
+    nome: 'Neuroanatomia e Ginecologia Clínica',
+    descricao: 'Playlist para o 3º período: neuroanatomia avançada com telencéfalo, cerebelo e introdução à ginecologia.',
+    periodo: 3,
+    professor: 'Prof. Edgar de Carvalho',
+    videos: ['v1', 'v2', 'v4', 'v8', 'v10', 'v11', 'v9'],
+    createdAt: '2026-01-20T10:00:00.000Z',
+  },
+];
+
 // ─── PLAYLISTS HELPERS ───
 function getPlaylists(): Playlist[] {
-  try { return JSON.parse(localStorage.getItem(PLAYLISTS_KEY) || '[]'); }
-  catch { return []; }
+  try {
+    const stored = JSON.parse(localStorage.getItem(PLAYLISTS_KEY) || 'null');
+    if (stored === null) {
+      // First time: seed with defaults
+      localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(DEFAULT_PLAYLISTS));
+      return DEFAULT_PLAYLISTS;
+    }
+    // Merge defaults if missing
+    const ids = new Set(stored.map((p: Playlist) => p.id));
+    const merged = [...stored];
+    for (const def of DEFAULT_PLAYLISTS) {
+      if (!ids.has(def.id)) merged.push(def);
+    }
+    if (merged.length !== stored.length) {
+      localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(merged));
+    }
+    return merged;
+  }
+  catch { return DEFAULT_PLAYLISTS; }
 }
 function savePlaylists(data: Playlist[]) {
   localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(data));
@@ -121,7 +163,6 @@ const allTrilhas: Trilha[] = (videosData as any).trilhas || [];
 
 const AREAS = ['Todos', ...Array.from(new Set(allVideos.map(v => v.grandeArea))).sort()];
 const ESPECIALIDADES = ['Todas', ...Array.from(new Set(allVideos.map(v => v.especialidade))).sort()];
-const TEMAS = ['Todos', ...Array.from(new Set(allVideos.map(v => v.tema).filter(Boolean))).sort()];
 
 // ─── STAR RATING COMPONENT ───
 function StarRating({ value, onChange, size = 'md', readonly = false }: {
@@ -161,12 +202,16 @@ function StarRating({ value, onChange, size = 'md', readonly = false }: {
 // ─── MAIN COMPONENT ───
 // ═══════════════════════════════════════════════════════
 export default function BibliotecaPage() {
+  const { user, hasRole } = useAuth();
+  const canManagePlaylists = hasRole(['professor', 'coordenacao', 'admin']);
+
   const [videos] = useState<Video[]>(allVideos);
   const [trilhas] = useState<Trilha[]>(allTrilhas);
   const [search, setSearch] = useState('');
   const [selectedArea, setSelectedArea] = useState('Todos');
   const [selectedEspecialidade, setSelectedEspecialidade] = useState('Todas');
   const [selectedTema, setSelectedTema] = useState('Todos');
+  const [selectedPeriodo, setSelectedPeriodo] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [progressMap, setProgressMap] = useState<Record<string, WatchProgress>>({});
@@ -190,6 +235,13 @@ export default function BibliotecaPage() {
 
     setPlaylists(getPlaylists());
   }, []);
+
+  // Set default period filter for students
+  useEffect(() => {
+    if (user?.role === 'aluno' && user.periodo && selectedPeriodo === null) {
+      // Don't auto-filter, just leave null (show all)
+    }
+  }, [user]);
 
   const refreshProgress = useCallback(() => {
     const allP = getProgress();
@@ -221,6 +273,16 @@ export default function BibliotecaPage() {
     return ['Todos', ...temas];
   }, [videos, selectedArea, selectedEspecialidade]);
 
+  // Get video IDs that belong to playlists of a specific period
+  const periodVideoIds = useMemo(() => {
+    if (selectedPeriodo === null) return null;
+    const ids = new Set<string>();
+    playlists.filter(pl => pl.periodo === selectedPeriodo).forEach(pl => {
+      pl.videos.forEach(vid => ids.add(vid));
+    });
+    return ids;
+  }, [playlists, selectedPeriodo]);
+
   // Filtered videos
   const filtered = useMemo(() => {
     return videos.filter(v => {
@@ -232,9 +294,10 @@ export default function BibliotecaPage() {
         v.professor.toLowerCase().includes(search.toLowerCase()) ||
         v.especialidade.toLowerCase().includes(search.toLowerCase()) ||
         v.tema.toLowerCase().includes(search.toLowerCase());
-      return matchArea && matchEsp && matchTema && matchSearch;
+      const matchPeriodo = periodVideoIds === null || periodVideoIds.has(v.id);
+      return matchArea && matchEsp && matchTema && matchSearch && matchPeriodo;
     });
-  }, [videos, selectedArea, selectedEspecialidade, selectedTema, search]);
+  }, [videos, selectedArea, selectedEspecialidade, selectedTema, search, periodVideoIds]);
 
   // Continue watching
   const continueWatching = useMemo(() => {
@@ -301,14 +364,28 @@ export default function BibliotecaPage() {
     setSelectedPlaylist(null);
   };
 
+  const handleUpdatePlaylistVideos = (playlistId: string, newVideoOrder: string[]) => {
+    const updated = playlists.map(p =>
+      p.id === playlistId ? { ...p, videos: newVideoOrder } : p
+    );
+    savePlaylists(updated);
+    setPlaylists(updated);
+    // Also update selectedPlaylist if it's the one being edited
+    const updatedPl = updated.find(p => p.id === playlistId);
+    if (updatedPl && selectedPlaylist?.id === playlistId) {
+      setSelectedPlaylist(updatedPl);
+    }
+  };
+
   const clearFilters = () => {
     setSelectedArea('Todos');
     setSelectedEspecialidade('Todas');
     setSelectedTema('Todos');
+    setSelectedPeriodo(null);
     setSearch('');
   };
 
-  const hasActiveFilters = selectedArea !== 'Todos' || selectedEspecialidade !== 'Todas' || selectedTema !== 'Todos' || search !== '';
+  const hasActiveFilters = selectedArea !== 'Todos' || selectedEspecialidade !== 'Todas' || selectedTema !== 'Todos' || search !== '' || selectedPeriodo !== null;
 
   // ═══════════════════════════════════════════════════════
   // ─── VIDEO PLAYER VIEW ───
@@ -365,12 +442,14 @@ export default function BibliotecaPage() {
                   Por {selectedPlaylist.professor} · {plVideos.length} vídeos · {formatDuration(plVideos.reduce((s, v) => s + v.duration, 0))}
                 </p>
               </div>
-              <button
-                onClick={() => handleDeletePlaylist(selectedPlaylist.id)}
-                className="text-xs text-red-400 hover:text-red-300 transition-colors px-3 py-1.5 rounded-md border border-red-500/20 hover:bg-red-500/10"
-              >
-                Excluir Playlist
-              </button>
+              {canManagePlaylists && (
+                <button
+                  onClick={() => handleDeletePlaylist(selectedPlaylist.id)}
+                  className="text-xs text-red-400 hover:text-red-300 transition-colors px-3 py-1.5 rounded-md border border-red-500/20 hover:bg-red-500/10"
+                >
+                  Excluir Playlist
+                </button>
+              )}
             </div>
             <div className="mt-4">
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -383,40 +462,24 @@ export default function BibliotecaPage() {
             </div>
           </div>
 
-          {/* Video List */}
+          {/* Video List with Drag-and-Drop (only for professors) */}
           <div className="space-y-2">
-            {plVideos.map((video, idx) => {
-              const prog = progressMap[video.id];
-              const isComplete = prog?.progress === 100;
-              return (
-                <button
-                  key={video.id}
-                  onClick={() => handlePlayVideo(video)}
-                  className="w-full flex items-center gap-4 p-3 rounded-lg bg-muted/20 border border-border/50 hover:border-primary/30 hover:bg-muted/40 transition-all text-left group"
-                >
-                  <span className="text-sm font-mono text-muted-foreground w-6 text-center shrink-0">
-                    {isComplete ? '✓' : idx + 1}
-                  </span>
-                  <div className="relative w-24 h-14 rounded overflow-hidden shrink-0 bg-muted">
-                    <img src={getThumbnail(video.youtubeId)} alt={video.title} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                      <Play className="w-5 h-5 text-white fill-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${isComplete ? 'text-muted-foreground line-through' : ''}`}>
-                      {video.title}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{video.professor} · {formatDuration(video.duration)}</p>
-                  </div>
-                  {ratingsMap[video.id] && (
-                    <div className="shrink-0">
-                      <StarRating value={ratingsMap[video.id].rating} readonly size="sm" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+            {canManagePlaylists && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5 mb-2">
+                <GripVertical className="w-3.5 h-3.5" />
+                Arraste para reordenar os vídeos da playlist
+              </p>
+            )}
+            <DraggableVideoList
+              videos={plVideos}
+              progressMap={progressMap}
+              ratingsMap={ratingsMap}
+              onPlayVideo={handlePlayVideo}
+              canReorder={canManagePlaylists}
+              onReorder={(newOrder) => {
+                handleUpdatePlaylistVideos(selectedPlaylist.id, newOrder.map(v => v.id));
+              }}
+            />
           </div>
         </div>
       </DashboardLayout>
@@ -545,6 +608,22 @@ export default function BibliotecaPage() {
                       {filteredTemas.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
+                  <div className="min-w-[180px]">
+                    <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-1 block">
+                      Período
+                    </label>
+                    <select
+                      value={selectedPeriodo ?? ''}
+                      onChange={e => setSelectedPeriodo(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full h-8 px-2 rounded-md bg-muted/50 border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    >
+                      <option value="">Todos os períodos</option>
+                      {PERIODOS.map(p => {
+                        const count = playlists.filter(pl => pl.periodo === p).flatMap(pl => pl.videos).length;
+                        return <option key={p} value={p}>{p}º Período ({count} vídeos)</option>;
+                      })}
+                    </select>
+                  </div>
                   {hasActiveFilters && (
                     <button
                       onClick={clearFilters}
@@ -555,6 +634,37 @@ export default function BibliotecaPage() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Period Quick Filter Pills (always visible in catalog) */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedPeriodo(null)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  selectedPeriodo === null
+                    ? 'bg-primary/20 text-primary border border-primary/30'
+                    : 'bg-muted/30 text-muted-foreground hover:text-foreground border border-border/50'
+                }`}
+              >
+                Todos os Períodos
+              </button>
+              {PERIODOS.map(p => {
+                const count = new Set(playlists.filter(pl => pl.periodo === p).flatMap(pl => pl.videos)).size;
+                if (count === 0) return null;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setSelectedPeriodo(selectedPeriodo === p ? null : p)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      selectedPeriodo === p
+                        ? 'bg-primary/20 text-primary border border-primary/30'
+                        : 'bg-muted/30 text-muted-foreground hover:text-foreground border border-border/50'
+                    }`}
+                  >
+                    {p}º Período ({count})
+                  </button>
+                );
+              })}
             </div>
 
             {/* Stats Bar */}
@@ -786,12 +896,14 @@ export default function BibliotecaPage() {
               <p className="text-sm text-muted-foreground">
                 Playlists criadas pelos professores para cada período.
               </p>
-              <button
-                onClick={() => setShowPlaylistModal(true)}
-                className="h-8 px-3 rounded-md bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors text-sm flex items-center gap-1.5"
-              >
-                Criar Playlist
-              </button>
+              {canManagePlaylists && (
+                <button
+                  onClick={() => setShowPlaylistModal(true)}
+                  className="h-8 px-3 rounded-md bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors text-sm flex items-center gap-1.5"
+                >
+                  Criar Playlist
+                </button>
+              )}
             </div>
 
             {/* Filter by Period */}
@@ -801,7 +913,11 @@ export default function BibliotecaPage() {
                 return (
                   <span
                     key={p}
-                    className="px-3 py-1 rounded-full text-xs bg-muted/50 text-muted-foreground border border-border/50"
+                    className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                      count > 0
+                        ? 'bg-primary/10 text-primary border-primary/20'
+                        : 'bg-muted/50 text-muted-foreground border-border/50'
+                    }`}
                   >
                     {p}º Período ({count})
                   </span>
@@ -856,7 +972,7 @@ export default function BibliotecaPage() {
         )}
 
         {/* Create Playlist Modal */}
-        {showPlaylistModal && (
+        {showPlaylistModal && canManagePlaylists && (
           <CreatePlaylistModal
             videos={videos}
             onClose={() => setShowPlaylistModal(false)}
@@ -865,6 +981,120 @@ export default function BibliotecaPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════
+// ─── DRAGGABLE VIDEO LIST COMPONENT ───
+// ═══════════════════════════════════════════════════════
+function DraggableVideoList({ videos, progressMap, ratingsMap, onPlayVideo, canReorder, onReorder }: {
+  videos: Video[];
+  progressMap: Record<string, WatchProgress>;
+  ratingsMap: Record<string, VideoRating>;
+  onPlayVideo: (v: Video) => void;
+  canReorder: boolean;
+  onReorder: (newOrder: Video[]) => void;
+}) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [localVideos, setLocalVideos] = useState(videos);
+  const dragItemRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setLocalVideos(videos);
+  }, [videos]);
+
+  const handleDragStart = (idx: number) => {
+    dragItemRef.current = idx;
+    setDragIndex(idx);
+  };
+
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setOverIndex(idx);
+  };
+
+  const handleDrop = (idx: number) => {
+    if (dragItemRef.current === null || dragItemRef.current === idx) {
+      setDragIndex(null);
+      setOverIndex(null);
+      return;
+    }
+    const newList = [...localVideos];
+    const [removed] = newList.splice(dragItemRef.current, 1);
+    newList.splice(idx, 0, removed);
+    setLocalVideos(newList);
+    onReorder(newList);
+    setDragIndex(null);
+    setOverIndex(null);
+    dragItemRef.current = null;
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setOverIndex(null);
+    dragItemRef.current = null;
+  };
+
+  return (
+    <div className="space-y-1.5">
+      {localVideos.map((video, idx) => {
+        const prog = progressMap[video.id];
+        const isComplete = prog?.progress === 100;
+        const isDragging = dragIndex === idx;
+        const isOver = overIndex === idx;
+
+        return (
+          <div
+            key={video.id}
+            draggable={canReorder}
+            onDragStart={() => handleDragStart(idx)}
+            onDragOver={(e) => handleDragOver(e, idx)}
+            onDrop={() => handleDrop(idx)}
+            onDragEnd={handleDragEnd}
+            className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+              isDragging
+                ? 'opacity-40 bg-muted/10 border-border/30'
+                : isOver
+                  ? 'bg-primary/10 border-primary/40 shadow-sm shadow-primary/10'
+                  : 'bg-muted/20 border-border/50 hover:border-primary/30 hover:bg-muted/40'
+            } ${canReorder ? 'cursor-grab active:cursor-grabbing' : ''}`}
+          >
+            {canReorder && (
+              <div className="shrink-0 text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+                <GripVertical className="w-4 h-4" />
+              </div>
+            )}
+            <span className="text-sm font-mono text-muted-foreground w-6 text-center shrink-0">
+              {isComplete ? '✓' : idx + 1}
+            </span>
+            <button
+              onClick={() => onPlayVideo(video)}
+              className="flex items-center gap-4 flex-1 min-w-0 text-left group"
+            >
+              <div className="relative w-24 h-14 rounded overflow-hidden shrink-0 bg-muted">
+                <img src={getThumbnail(video.youtubeId)} alt={video.title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  <Play className="w-5 h-5 text-white fill-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium truncate ${isComplete ? 'text-muted-foreground line-through' : ''}`}>
+                  {video.title}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{video.professor} · {formatDuration(video.duration)}</p>
+              </div>
+            </button>
+            {ratingsMap[video.id] && (
+              <div className="shrink-0">
+                <StarRating value={ratingsMap[video.id].rating} readonly size="sm" />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1093,6 +1323,9 @@ function CreatePlaylistModal({ videos, onClose, onCreate }: {
   const [professor, setProfessor] = useState('');
   const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const [videoSearch, setVideoSearch] = useState('');
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const dragRef = useRef<number | null>(null);
 
   const filteredVideos = useMemo(() => {
     if (!videoSearch) return videos;
@@ -1112,6 +1345,38 @@ function CreatePlaylistModal({ videos, onClose, onCreate }: {
   const handleSubmit = () => {
     if (!nome || !professor || selectedVideos.length === 0) return;
     onCreate({ nome, descricao, periodo, professor, videos: selectedVideos });
+  };
+
+  // Drag-and-drop for reordering selected videos
+  const handleDragStart = (idx: number) => {
+    dragRef.current = idx;
+    setDragIndex(idx);
+  };
+
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setOverIndex(idx);
+  };
+
+  const handleDrop = (idx: number) => {
+    if (dragRef.current === null || dragRef.current === idx) {
+      setDragIndex(null);
+      setOverIndex(null);
+      return;
+    }
+    const newList = [...selectedVideos];
+    const [removed] = newList.splice(dragRef.current, 1);
+    newList.splice(idx, 0, removed);
+    setSelectedVideos(newList);
+    setDragIndex(null);
+    setOverIndex(null);
+    dragRef.current = null;
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setOverIndex(null);
+    dragRef.current = null;
   };
 
   return (
@@ -1216,18 +1481,36 @@ function CreatePlaylistModal({ videos, onClose, onCreate }: {
             </div>
           </div>
 
-          {/* Selected Order */}
+          {/* Selected Order with Drag-and-Drop */}
           {selectedVideos.length > 0 && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                Ordem dos vídeos
+              <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1.5">
+                <GripVertical className="w-3 h-3" />
+                Ordem dos vídeos (arraste para reordenar)
               </label>
               <div className="space-y-1">
                 {selectedVideos.map((vid, idx) => {
                   const v = videos.find(x => x.id === vid);
                   if (!v) return null;
+                  const isDragging = dragIndex === idx;
+                  const isOver = overIndex === idx;
                   return (
-                    <div key={vid} className="flex items-center gap-2 p-1.5 rounded bg-muted/20 text-xs">
+                    <div
+                      key={vid}
+                      draggable
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragOver={(e) => handleDragOver(e, idx)}
+                      onDrop={() => handleDrop(idx)}
+                      onDragEnd={handleDragEnd}
+                      className={`flex items-center gap-2 p-1.5 rounded text-xs cursor-grab active:cursor-grabbing transition-all ${
+                        isDragging
+                          ? 'opacity-40 bg-muted/10'
+                          : isOver
+                            ? 'bg-primary/15 border border-primary/30'
+                            : 'bg-muted/20'
+                      }`}
+                    >
+                      <GripVertical className="w-3 h-3 text-muted-foreground/40 shrink-0" />
                       <span className="font-mono text-muted-foreground w-5 text-center">{idx + 1}</span>
                       <span className="truncate flex-1">{v.title}</span>
                       <button
