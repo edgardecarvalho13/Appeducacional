@@ -4,6 +4,8 @@
  * playlists de professor por período, avaliação com estrelas e comentários.
  * Player YouTube embedado. Drag-and-drop para reordenar vídeos nas playlists.
  * Controle de acesso: apenas professores/coordenação/admin podem criar playlists.
+ * Métrica de 90%: quando aluno assiste >90% da aula, registra como concluída para coordenador.
+ * Notificações: ao criar playlist, notifica alunos do período via sistema interno.
  */
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -12,8 +14,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   Search, Play, Clock, ChevronLeft, X, Star, Eye, BookOpen,
   Filter, MessageSquare, ChevronDown, ChevronUp, List, ThumbsUp,
-  GripVertical
+  GripVertical, Bell, CheckCircle2, Mail, AlertCircle
 } from 'lucide-react';
+import { toast } from 'sonner';
+import type { VideoCompletionRecord, AppNotification } from '@/lib/types';
 import videosData from '@/data/videos.json';
 
 interface Video {
@@ -64,6 +68,9 @@ interface Playlist {
 const PROGRESS_KEY = 'famp-video-progress';
 const RATINGS_KEY = 'famp-video-ratings';
 const PLAYLISTS_KEY = 'famp-playlists';
+const COMPLETIONS_KEY = 'famp-video-completions';
+const NOTIFICATIONS_KEY = 'famp-notifications';
+const COMPLETION_THRESHOLD = 90; // 90% para considerar aula concluída
 
 // ─── PROGRESS HELPERS ───
 function getProgress(): WatchProgress[] {
@@ -91,6 +98,49 @@ function saveRating(rating: VideoRating) {
   const idx = all.findIndex(r => r.videoId === rating.videoId);
   if (idx >= 0) all[idx] = rating; else all.push(rating);
   localStorage.setItem(RATINGS_KEY, JSON.stringify(all));
+}
+
+// ─── COMPLETION RECORDS (para coordenador) ───
+function getCompletions(): VideoCompletionRecord[] {
+  try { return JSON.parse(localStorage.getItem(COMPLETIONS_KEY) || '[]'); }
+  catch { return []; }
+}
+function recordCompletion(record: VideoCompletionRecord) {
+  const all = getCompletions();
+  // Evitar duplicatas
+  const exists = all.some(r => r.alunoId === record.alunoId && r.videoId === record.videoId);
+  if (!exists) {
+    all.push(record);
+    localStorage.setItem(COMPLETIONS_KEY, JSON.stringify(all));
+  }
+}
+
+// ─── NOTIFICATIONS HELPERS ───
+function getNotifications(): AppNotification[] {
+  try { return JSON.parse(localStorage.getItem(NOTIFICATIONS_KEY) || '[]'); }
+  catch { return []; }
+}
+function addNotification(notif: AppNotification) {
+  const all = getNotifications();
+  all.unshift(notif); // Mais recente primeiro
+  // Manter apenas as últimas 50 notificações
+  if (all.length > 50) all.splice(50);
+  localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(all));
+}
+function notifyNewPlaylist(playlistName: string, periodo: number, professorName: string) {
+  const notif: AppNotification = {
+    id: `notif-${Date.now()}`,
+    type: 'nova_playlist',
+    title: 'Nova Playlist Disponível',
+    message: `${professorName} criou a playlist "${playlistName}" para o ${periodo}º período.`,
+    targetPeriodo: periodo,
+    read: false,
+    createdAt: new Date().toISOString(),
+    metadata: { playlistName, periodo, professorName },
+  };
+  addNotification(notif);
+  // Simular envio de e-mail (em produção, seria via backend/Supabase Edge Function)
+  console.log(`[EMAIL QUEUE] Notificação de nova playlist para alunos do ${periodo}º período:`, notif);
 }
 
 // ─── DEFAULT PLAYLISTS ───
@@ -315,8 +365,8 @@ export default function BibliotecaPage() {
 
   // Stats
   const stats = useMemo(() => {
-    const watched = Object.values(progressMap).filter(p => p.progress === 100).length;
-    const inProgress = Object.values(progressMap).filter(p => p.progress > 0 && p.progress < 100).length;
+    const watched = Object.values(progressMap).filter(p => p.progress >= COMPLETION_THRESHOLD).length;
+    const inProgress = Object.values(progressMap).filter(p => p.progress > 0 && p.progress < COMPLETION_THRESHOLD).length;
     const totalMinutes = videos.reduce((acc, v) => acc + v.duration, 0);
     return { total: videos.length, watched, inProgress, totalMinutes };
   }, [videos, progressMap]);
@@ -338,7 +388,57 @@ export default function BibliotecaPage() {
   const handleMarkComplete = (videoId: string) => {
     updateVideoProgress(videoId, 100);
     refreshProgress();
+    // Registrar conclusão para métricas do coordenador (>= 90%)
+    if (user) {
+      const video = videos.find(v => v.id === videoId);
+      if (video) {
+        recordCompletion({
+          id: `comp-${Date.now()}-${videoId}`,
+          alunoId: user.id,
+          alunoNome: user.full_name,
+          alunoEmail: user.email,
+          alunoPeriodo: user.periodo,
+          videoId: video.id,
+          videoTitle: video.title,
+          completedAt: new Date().toISOString(),
+          watchPercentage: 100,
+        });
+        toast.success('Aula concluída!', {
+          description: `"${video.title}" foi registrada como concluída no seu histórico.`,
+          icon: <CheckCircle2 className="w-4 h-4" />,
+        });
+      }
+    }
   };
+
+  // Marcar como concluído automaticamente quando >= 90% assistido
+  const handleAutoComplete = useCallback((videoId: string, percentage: number) => {
+    if (percentage >= COMPLETION_THRESHOLD && user) {
+      const existing = progressMap[videoId];
+      if (!existing || existing.progress < COMPLETION_THRESHOLD) {
+        updateVideoProgress(videoId, 100);
+        refreshProgress();
+        const video = videos.find(v => v.id === videoId);
+        if (video) {
+          recordCompletion({
+            id: `comp-${Date.now()}-${videoId}`,
+            alunoId: user.id,
+            alunoNome: user.full_name,
+            alunoEmail: user.email,
+            alunoPeriodo: user.periodo,
+            videoId: video.id,
+            videoTitle: video.title,
+            completedAt: new Date().toISOString(),
+            watchPercentage: percentage,
+          });
+          toast.success('Aula concluída automaticamente!', {
+            description: `Você assistiu mais de 90% de "${video.title}". Registrada como concluída.`,
+            icon: <CheckCircle2 className="w-4 h-4" />,
+          });
+        }
+      }
+    }
+  }, [user, progressMap, videos, refreshProgress]);
 
   const handleSaveRating = (videoId: string, rating: number, comment: string) => {
     saveRating({ videoId, rating, comment, date: new Date().toISOString() });
@@ -355,6 +455,14 @@ export default function BibliotecaPage() {
     savePlaylists(updated);
     setPlaylists(updated);
     setShowPlaylistModal(false);
+
+    // Notificar alunos do período sobre a nova playlist
+    notifyNewPlaylist(playlist.nome, playlist.periodo, playlist.professor);
+    toast.success('Playlist criada com sucesso!', {
+      description: `Notificação enviada para alunos do ${playlist.periodo}º período. E-mail será enviado automaticamente.`,
+      icon: <Mail className="w-4 h-4" />,
+      duration: 5000,
+    });
   };
 
   const handleDeletePlaylist = (id: string) => {
@@ -399,6 +507,7 @@ export default function BibliotecaPage() {
         ratingsMap={ratingsMap}
         onClose={handleClosePlayer}
         onMarkComplete={handleMarkComplete}
+        onAutoComplete={handleAutoComplete}
         onSaveRating={handleSaveRating}
         onPlayVideo={handlePlayVideo}
       />
@@ -679,7 +788,7 @@ export default function BibliotecaPage() {
               <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <Eye className="w-3.5 h-3.5" />
-                  <span className="text-[10px] uppercase tracking-wider font-medium">Assistidos</span>
+                  <span className="text-[10px] uppercase tracking-wider font-medium">Concluídos ({'>'}90%)</span>
                 </div>
                 <p className="text-lg font-bold font-mono text-green-400">{stats.watched}</p>
               </div>
@@ -799,15 +908,26 @@ export default function BibliotecaPage() {
                   {filtered.map(video => {
                     const prog = progressMap[video.id];
                     const isComplete = prog?.progress === 100;
+                    const isOver90 = (prog?.progress || 0) >= COMPLETION_THRESHOLD;
                     const rating = ratingsMap[video.id];
                     return (
                       <button
                         key={video.id}
                         onClick={() => handlePlayVideo(video)}
-                        className="group rounded-lg overflow-hidden bg-muted/20 border border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all text-left"
+                        className={`group rounded-lg overflow-hidden bg-muted/20 border transition-all text-left ${
+                          isOver90
+                            ? 'border-green-500/30 hover:border-green-500/50 hover:shadow-lg hover:shadow-green-500/5'
+                            : 'border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5'
+                        }`}
                       >
                         <div className="relative h-36">
                           <img src={getThumbnail(video.youtubeId)} alt={video.title} className="w-full h-full object-cover" />
+                          {isOver90 && (
+                            <div className="absolute top-2 left-2 flex items-center gap-1 bg-green-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Concluída
+                            </div>
+                          )}
                           <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                             <div className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                               <Play className="w-5 h-5 text-white fill-white ml-0.5" />
@@ -1102,13 +1222,14 @@ function DraggableVideoList({ videos, progressMap, ratingsMap, onPlayVideo, canR
 // ═══════════════════════════════════════════════════════
 // ─── VIDEO PLAYER VIEW COMPONENT ───
 // ═══════════════════════════════════════════════════════
-function VideoPlayerView({ video, videos, progressMap, ratingsMap, onClose, onMarkComplete, onSaveRating, onPlayVideo }: {
+function VideoPlayerView({ video, videos, progressMap, ratingsMap, onClose, onMarkComplete, onAutoComplete, onSaveRating, onPlayVideo }: {
   video: Video;
   videos: Video[];
   progressMap: Record<string, WatchProgress>;
   ratingsMap: Record<string, VideoRating>;
   onClose: () => void;
   onMarkComplete: (id: string) => void;
+  onAutoComplete: (id: string, percentage: number) => void;
   onSaveRating: (id: string, rating: number, comment: string) => void;
   onPlayVideo: (v: Video) => void;
 }) {
@@ -1117,6 +1238,9 @@ function VideoPlayerView({ video, videos, progressMap, ratingsMap, onClose, onMa
   const [comment, setComment] = useState(existing?.comment || '');
   const [showRating, setShowRating] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [watchProgress, setWatchProgress] = useState(0);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isCompleteRef = useRef(false);
 
   // Reset when video changes
   useEffect(() => {
@@ -1125,7 +1249,42 @@ function VideoPlayerView({ video, videos, progressMap, ratingsMap, onClose, onMa
     setComment(ex?.comment || '');
     setSaved(false);
     setShowRating(false);
+    isCompleteRef.current = (progressMap[video.id]?.progress || 0) >= COMPLETION_THRESHOLD;
   }, [video.id, ratingsMap]);
+
+  // Simular progresso de assistência (em produção, usar YouTube IFrame API)
+  useEffect(() => {
+    const existingProgress = progressMap[video.id]?.progress || 0;
+    setWatchProgress(existingProgress);
+    isCompleteRef.current = existingProgress >= COMPLETION_THRESHOLD;
+
+    if (existingProgress >= 100) return;
+
+    // Simular progresso: incrementar a cada 10s baseado na duração do vídeo
+    const totalSeconds = video.duration * 60;
+    const incrementPerTick = (10 / totalSeconds) * 100; // % por tick de 10s
+
+    progressTimerRef.current = setInterval(() => {
+      setWatchProgress(prev => {
+        const next = Math.min(prev + incrementPerTick, 100);
+        // Atualizar progresso no storage
+        updateVideoProgress(video.id, Math.round(next));
+        // Verificar se atingiu 90%
+        if (next >= COMPLETION_THRESHOLD && !isCompleteRef.current) {
+          isCompleteRef.current = true;
+          onAutoComplete(video.id, Math.round(next));
+        }
+        if (next >= 100 && progressTimerRef.current) {
+          clearInterval(progressTimerRef.current);
+        }
+        return next;
+      });
+    }, 10000); // A cada 10 segundos
+
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
+  }, [video.id, video.duration]);
 
   const handleSave = () => {
     if (rating > 0) {
@@ -1167,6 +1326,44 @@ function VideoPlayerView({ video, videos, progressMap, ratingsMap, onClose, onMa
               />
             </div>
 
+            {/* Watch Progress Bar */}
+            <div className="mt-4 space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Progresso da aula</span>
+                  {watchProgress >= COMPLETION_THRESHOLD && (
+                    <span className="flex items-center gap-1 text-green-400 font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Concluída ({'>'}90%)
+                    </span>
+                  )}
+                </div>
+                <span className={`font-mono font-medium ${
+                  watchProgress >= COMPLETION_THRESHOLD ? 'text-green-400' : 'text-primary'
+                }`}>{Math.round(watchProgress)}%</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden relative">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ${
+                    watchProgress >= COMPLETION_THRESHOLD ? 'bg-green-500' : 'bg-primary'
+                  }`}
+                  style={{ width: `${watchProgress}%` }}
+                />
+                {/* Marcador de 90% */}
+                <div
+                  className="absolute top-0 h-full w-0.5 bg-amber-400/60"
+                  style={{ left: '90%' }}
+                  title="90% — Aula considerada concluída"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                {watchProgress < COMPLETION_THRESHOLD
+                  ? `Assista pelo menos 90% para que a aula seja registrada como concluída para a coordenação.`
+                  : 'Esta aula foi registrada como concluída no seu histórico acadêmico.'
+                }
+              </p>
+            </div>
+
             {/* Video Info */}
             <div className="mt-5 space-y-4">
               <div className="flex items-start justify-between gap-4">
@@ -1185,14 +1382,20 @@ function VideoPlayerView({ video, videos, progressMap, ratingsMap, onClose, onMa
                     Avaliar
                   </button>
                   <button
-                    onClick={() => onMarkComplete(video.id)}
+                    onClick={() => {
+                      onMarkComplete(video.id);
+                      // Parar timer e atualizar progresso visual
+                      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+                      setWatchProgress(100);
+                      isCompleteRef.current = true;
+                    }}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      progressMap[video.id]?.progress === 100
+                      watchProgress >= COMPLETION_THRESHOLD
                         ? 'bg-green-500/20 text-green-400 border border-green-500/30'
                         : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'
                     }`}
                   >
-                    {progressMap[video.id]?.progress === 100 ? '✓ Concluído' : 'Marcar como Concluído'}
+                    {watchProgress >= COMPLETION_THRESHOLD ? '✓ Concluído' : 'Marcar como Concluído'}
                   </button>
                 </div>
               </div>

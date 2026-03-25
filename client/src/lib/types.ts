@@ -204,3 +204,33 @@ export interface ModuleShortcut {
   status: 'active' | 'coming_soon';
   badge?: string;
 }
+
+// ============================================================
+// Video Watch Analytics (para coordenador)
+// ============================================================
+export interface VideoCompletionRecord {
+  id: string;
+  alunoId: string;
+  alunoNome: string;
+  alunoEmail: string;
+  alunoPeriodo?: number;
+  videoId: string;
+  videoTitle: string;
+  completedAt: string;
+  watchPercentage: number; // >= 90 para ser considerado concluído
+}
+
+// ============================================================
+// Notificações internas do app
+// ============================================================
+export interface AppNotification {
+  id: string;
+  type: 'nova_playlist' | 'aviso' | 'geral';
+  title: string;
+  message: string;
+  targetPeriodo?: number;
+  targetEmail?: string;
+  read: boolean;
+  createdAt: string;
+  metadata?: Record<string, unknown>;
+}
