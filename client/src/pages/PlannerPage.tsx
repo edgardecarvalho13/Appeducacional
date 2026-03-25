@@ -45,6 +45,7 @@ import {
   Save,
   ExternalLink,
   Link2,
+  Lock,
 } from 'lucide-react';
 import { usePlannerStore } from '@/hooks/usePlannerStore';
 import type { PlannerItemStatus, EtapaEstudo } from '@/lib/types';
@@ -428,6 +429,7 @@ function TemaDetailView({ store, temaId, onBack }: any) {
 
   const concluidas = etapas.filter((e: any) => e.status === 'concluido').length;
   const progresso = etapas.length > 0 ? Math.round((concluidas / etapas.length) * 100) : 0;
+  const questoesPosCompleta = etapas.some((e: any) => e.tipo === 'questoes_pos' && e.status === 'concluido');
 
   const handleDelete = () => {
     store.deleteTema(temaId);
@@ -482,23 +484,32 @@ function TemaDetailView({ store, temaId, onBack }: any) {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border pb-0">
         {[
-          { key: 'etapas', label: 'Etapas', icon: ListChecks, count: `${concluidas}/${etapas.length}` },
-          { key: 'revisoes', label: 'Revisões & TAs', icon: RotateCcw, count: `${revisoes.filter((r: any) => r.status === 'concluido').length + testes.filter((t: any) => t.status === 'concluido').length}/${revisoes.length + testes.length}` },
+          { key: 'etapas', label: 'Etapas', icon: ListChecks, count: `${concluidas}/${etapas.length}`, locked: false },
+          { key: 'revisoes', label: 'Revisões & TAs', icon: RotateCcw, count: `${revisoes.filter((r: any) => r.status === 'concluido').length + testes.filter((t: any) => t.status === 'concluido').length}/${revisoes.length + testes.length}`, locked: !questoesPosCompleta },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
+              onClick={() => {
+                if (tab.locked) {
+                  toast.info('Complete todas as etapas (incluindo Questões Pós-Aula) para desbloquear as revisões.');
+                  return;
+                }
+                setActiveTab(tab.key as any);
+              }}
               className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors -mb-[1px] ${
-                activeTab === tab.key
+                tab.locked
+                  ? 'border-transparent text-muted-foreground/40 cursor-not-allowed'
+                  : activeTab === tab.key
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              {tab.locked && <Lock className="w-3 h-3 text-muted-foreground/40" />}
+              <Icon className={`w-3.5 h-3.5 ${tab.locked ? 'opacity-40' : ''}`} />
               {tab.label}
-              <span className="font-mono text-[10px] bg-muted/50 px-1 py-0.5 rounded">{tab.count}</span>
+              <span className={`font-mono text-[10px] px-1 py-0.5 rounded ${tab.locked ? 'bg-muted/20 text-muted-foreground/40' : 'bg-muted/50'}`}>{tab.count}</span>
             </button>
           );
         })}
@@ -586,7 +597,17 @@ function TemaDetailView({ store, temaId, onBack }: any) {
         </div>
       )}
 
-      {activeTab === 'revisoes' && (() => {
+      {activeTab === 'revisoes' && !questoesPosCompleta && (
+        <Card className="card-famp">
+          <CardContent className="p-8 text-center">
+            <Lock className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-muted-foreground mb-1">Revisões bloqueadas</h3>
+            <p className="text-xs text-muted-foreground/60">Complete a etapa <span className="text-primary font-medium">Questões Pós-Aula</span> para desbloquear as revisões espaçadas e testes aleatórios.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'revisoes' && questoesPosCompleta && (() => {
         // Intercalar R e TA em ordem: R1, TA1, R2, TA2, ...
         const intercalado: Array<{ type: 'revisao' | 'teste'; data: any }> = [];
         const maxLen = Math.max(revisoes.length, testes.length);
