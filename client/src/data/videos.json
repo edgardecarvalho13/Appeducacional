@@ -1,0 +1,242 @@
+[
+  {
+    "id": "v1",
+    "youtubeId": "P9UDjc_DCGI",
+    "title": "Tronco Encefálico e Nervos Cranianos",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 30,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Neurologia",
+    "tema": "Tronco Encefálico"
+  },
+  {
+    "id": "v2",
+    "youtubeId": "mDQ8Arr0SmY",
+    "title": "Medula Espinal",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 17,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Neurologia",
+    "tema": "Medula Espinal"
+  },
+  {
+    "id": "v3",
+    "youtubeId": "sQvjQO6WXZs",
+    "title": "Termos Anatômicos",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 5,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Anatomia",
+    "tema": "Terminologia Anatômica"
+  },
+  {
+    "id": "v4",
+    "youtubeId": "BD9E3S5eEi0",
+    "title": "Meninges, Sistema Ventricular e Líquor",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 84,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Neurologia",
+    "tema": "Meninges e Líquor"
+  },
+  {
+    "id": "v5",
+    "youtubeId": "-q0dr486q6E",
+    "title": "Sistema Reprodutor Masculino",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 9,
+    "grandeArea": "Cirurgia",
+    "especialidade": "Urologia",
+    "tema": "Sistema Reprodutor Masculino"
+  },
+  {
+    "id": "v6",
+    "youtubeId": "L8mf2qfxqx8",
+    "title": "Sistema Respiratório",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 9,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Pneumologia",
+    "tema": "Sistema Respiratório"
+  },
+  {
+    "id": "v7",
+    "youtubeId": "OCpRuWgS53I",
+    "title": "Sistema Urinário",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 8,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Nefrologia",
+    "tema": "Sistema Urinário"
+  },
+  {
+    "id": "v8",
+    "youtubeId": "VxnX5DCM94k",
+    "title": "Telencéfalo 1 — Face Súperolateral",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 18,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Neurologia",
+    "tema": "Telencéfalo"
+  },
+  {
+    "id": "v9",
+    "youtubeId": "fvRid0SOcLs",
+    "title": "Sistema Reprodutor Feminino",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 11,
+    "grandeArea": "Ginecologia",
+    "especialidade": "Ginecologia",
+    "tema": "Sistema Reprodutor Feminino"
+  },
+  {
+    "id": "v10",
+    "youtubeId": "d8NEz0X4ZAY",
+    "title": "Telencéfalo 2 — Faces Medial e Inferior",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 15,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Neurologia",
+    "tema": "Telencéfalo"
+  },
+  {
+    "id": "v11",
+    "youtubeId": "9zvc48gPg1g",
+    "title": "Cerebelo",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 11,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Neurologia",
+    "tema": "Cerebelo"
+  },
+  {
+    "id": "v12",
+    "youtubeId": "4t8C2L0zevE",
+    "title": "Osmolaridade — Efeitos do Meio sobre a Célula",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 10,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Fisiologia",
+    "tema": "Osmolaridade"
+  },
+  {
+    "id": "v13",
+    "youtubeId": "yG-PToPwQmQ",
+    "title": "Vidrarias e Pipetagem",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 16,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Técnicas de Laboratório",
+    "tema": "Vidrarias e Pipetagem"
+  },
+  {
+    "id": "v14",
+    "youtubeId": "784fWCoi2fs",
+    "title": "Técnicas de Medidas",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 8,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Técnicas de Laboratório",
+    "tema": "Técnicas de Medidas"
+  },
+  {
+    "id": "v15",
+    "youtubeId": "waDGSdM9_Rw",
+    "title": "Investigando a Deglutição",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 10,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Fisiologia",
+    "tema": "Deglutição"
+  },
+  {
+    "id": "v16",
+    "youtubeId": "aQCG7oix4Cs",
+    "title": "Exames Complementares — Raio X de Cotovelo",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 5,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Ortopedia / Radiologia",
+    "tema": "Raio X de Cotovelo"
+  },
+  {
+    "id": "v17",
+    "youtubeId": "U4zWbQtKRs8",
+    "title": "Raio X de Punho e Mão",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 6,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Ortopedia / Radiologia",
+    "tema": "Raio X de Punho e Mão"
+  },
+  {
+    "id": "v18",
+    "youtubeId": "KNUvzR-2WKo",
+    "title": "Raio X de Joelho",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 6,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Ortopedia / Radiologia",
+    "tema": "Raio X de Joelho"
+  },
+  {
+    "id": "v19",
+    "youtubeId": "DGE-V_2V1Yo",
+    "title": "Raio X de Tornozelo e Pé",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 6,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Ortopedia / Radiologia",
+    "tema": "Raio X de Tornozelo e Pé"
+  },
+  {
+    "id": "v20",
+    "youtubeId": "jX304qxDskA",
+    "title": "Paramentação com a Máscara Cirúrgica",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 4,
+    "grandeArea": "Cirurgia",
+    "especialidade": "Técnica Cirúrgica",
+    "tema": "Paramentação"
+  },
+  {
+    "id": "v21",
+    "youtubeId": "nlJOEgahovQ",
+    "title": "Coloração de Gram",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 5,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Microbiologia",
+    "tema": "Coloração de Gram"
+  },
+  {
+    "id": "v22",
+    "youtubeId": "1u-Im9wq3LE",
+    "title": "Técnicas de Semeadura",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 5,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Microbiologia",
+    "tema": "Técnicas de Semeadura"
+  },
+  {
+    "id": "v23",
+    "youtubeId": "VEUMHktwhJQ",
+    "title": "Preparação do Meio de Cultura",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 58,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Microbiologia",
+    "tema": "Meio de Cultura"
+  },
+  {
+    "id": "v24",
+    "youtubeId": "E-ZemQuDrxo",
+    "title": "Classificação dos Músculos",
+    "professor": "Prof. Edgar de Carvalho",
+    "duration": 10,
+    "grandeArea": "Clínica Médica",
+    "especialidade": "Anatomia",
+    "tema": "Classificação Muscular"
+  }
+]

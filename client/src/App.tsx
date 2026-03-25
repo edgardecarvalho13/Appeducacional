@@ -18,11 +18,11 @@ import Dashboard from "./pages/Dashboard";
 import AccessDenied from "./pages/AccessDenied";
 import {
   PlannerPage,
-  LibraryPage,
   FlashcardsPage,
   TurmasPage,
   AvisosPage,
 } from "./pages/ModulePlaceholder";
+import BibliotecaPage from "./pages/BibliotecaPage";
 import QuestPage from "./pages/QuestPage";
 import TutorPage from "./pages/TutorPage";
 import CadernoErrosPage from "./pages/CadernoErrosPage";
@@ -61,7 +61,7 @@ function Router() {
       </Route>
       <Route path="/library">
         <ProtectedRoute>
-          <LibraryPage />
+          <BibliotecaPage />
         </ProtectedRoute>
       </Route>
       <Route path="/caderno-erros">
