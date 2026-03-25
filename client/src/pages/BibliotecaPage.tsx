@@ -21,6 +21,21 @@ interface Video {
   tema: string;
 }
 
+interface Trilha {
+  id: string;
+  titulo: string;
+  descricao: string;
+  duracao: number;
+  videos: string[];
+  ordem: number;
+  icone: string;
+}
+
+interface VideosData {
+  trilhas: Trilha[];
+  videos: Video[];
+}
+
 interface WatchProgress {
   videoId: string;
   progress: number; // 0-100
@@ -65,10 +80,11 @@ function getThumbnail(youtubeId: string): string {
   return `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
 }
 
-const AREAS = ['Todos', ...Array.from(new Set((videosData as Video[]).map(v => v.grandeArea))).sort()];
+const AREAS = ['Todos', ...Array.from(new Set(((videosData as any).videos as Video[]).map(v => v.grandeArea))).sort()];
 
 export default function BibliotecaPage() {
-  const [videos] = useState<Video[]>(videosData as Video[]);
+  const [videos] = useState<Video[]>((videosData as any).videos || []);
+  const [trilhas] = useState<Trilha[]>((videosData as any).trilhas || []);
   const [search, setSearch] = useState('');
   const [selectedArea, setSelectedArea] = useState('Todos');
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
@@ -397,6 +413,51 @@ export default function BibliotecaPage() {
                           <span className="text-white/60 text-[10px] font-mono">{prog?.progress || 0}%</span>
                         </div>
                       </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Trilhas de Aprendizagem */}
+        {trilhas.length > 0 && selectedArea === 'Todos' && !search && (
+          <section>
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+              <BookOpen className="w-5 h-5 text-primary" />
+              Trilhas de Aprendizagem
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {trilhas.map(trilha => {
+                const trilhaVideos = trilha.videos.map(vid => videos.find(v => v.id === vid)).filter(Boolean) as Video[];
+                const trilhaProgress = trilhaVideos.reduce((sum, v) => sum + (progressMap[v.id]?.progress || 0), 0) / (trilhaVideos.length || 1);
+                return (
+                  <button
+                    key={trilha.id}
+                    onClick={() => {
+                      if (trilhaVideos.length > 0) handlePlayVideo(trilhaVideos[0]);
+                    }}
+                    className="group rounded-lg overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 hover:border-primary/50 transition-all text-left p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-bold text-sm leading-tight">{trilha.titulo}</h3>
+                        <p className="text-xs text-muted-foreground mt-1">{trilha.descricao}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">{trilhaVideos.length} vídeos</span>
+                        <span className="text-muted-foreground">{formatDuration(trilha.duracao)}</span>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all"
+                          style={{ width: `${Math.min(trilhaProgress, 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground text-right">{Math.round(trilhaProgress)}% concluído</div>
                     </div>
                   </button>
                 );
