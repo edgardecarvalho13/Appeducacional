@@ -1,6 +1,7 @@
-/**
+/*
  * FAMP Academy — Student Dashboard
  * Design: "Command Center" — Densidade informacional elegante.
+ * Foco em MOTIVAÇÃO + REALISMO, sem causar ansiedade.
  * Grid de widgets com métricas, sparklines, sessão do dia e atalhos.
  */
 
@@ -33,10 +34,14 @@ import {
   ArrowUpRight,
   CheckCircle2,
   AlertCircle,
+  Award,
+  Zap,
+  BookMarked,
+  Lightbulb,
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { toast } from 'sonner';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Cell, LineChart, Line } from 'recharts';
 import { motion } from 'framer-motion';
 
 const HERO_BG = 'https://d2xsxph8kpxj0f.cloudfront.net/310419663031165931/GTVSswVQbMzxsTPY394qoU/famp-hero-banner-9LKT2Zp2VHhNFi5wzX4RWR.webp';
@@ -100,10 +105,30 @@ function getPrioridadeStyle(p: string) {
   }
 }
 
+// Mock data para engajamento semanal (horas estudadas)
+const MOCK_ENGAGEMENT = [
+  { week: 'Sem 1', hours: 4.5 },
+  { week: 'Sem 2', hours: 5.2 },
+  { week: 'Sem 3', hours: 6.1 },
+  { week: 'Sem 4', hours: 7.3 },
+];
+
+// Mock achievements/badges
+const ACHIEVEMENTS = [
+  { id: 1, title: 'Sequência de 12 dias', icon: Flame, color: 'text-orange-400' },
+  { id: 2, title: 'Taxa de acerto > 70%', icon: Target, color: 'text-green-400' },
+  { id: 3, title: 'Estudo consistente', icon: Zap, color: 'text-yellow-400' },
+];
+
 export default function Dashboard() {
   const { user } = useAuth();
   const metrics = MOCK_METRICS;
   const firstName = user?.full_name.split(' ')[0] || 'Estudante';
+
+  // Filter avisos: apenas importantes (alta/urgente) e materiais novos
+  const avisosImportantes = MOCK_AVISOS.filter(a => 
+    a.prioridade === 'alta' || a.prioridade === 'urgente' || a.titulo.includes('material')
+  );
 
   return (
     <DashboardLayout title="Dashboard" subtitle={`${user?.periodo}º Período`}>
@@ -172,13 +197,44 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Left Column (2/3) */}
           <div className="lg:col-span-2 space-y-5">
-            {/* Next Session */}
+            {/* 1. Seu Progresso Esta Semana */}
             <motion.div variants={itemVariants}>
               <Card className="card-famp">
                 <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+                    ✨ Seu Progresso Esta Semana
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-green-500/15 border border-green-500/30 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">+3 aulas concluídas</p>
+                      <p className="text-xs text-muted-foreground">Você está no caminho certo!</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Sequência mantida</p>
+                      <p className="text-xs text-muted-foreground">{metrics.sequenciaDias} dias estudando regularmente</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Next Session - Improved */}
+            <motion.div variants={itemVariants}>
+              <Card className="card-famp border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+                <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-                      Próxima Sessão de Estudo
+                      🎯 Próxima Sessão de Estudo
                     </CardTitle>
                     <Link href="/planner">
                       <span className="text-xs text-primary hover:underline flex items-center gap-1">
@@ -196,7 +252,7 @@ export default function Dashboard() {
                       <div className="flex-1">
                         <h3 className="font-semibold text-sm">{metrics.proximaSessao.titulo}</h3>
                         <p className="text-xs text-muted-foreground mt-0.5">{metrics.proximaSessao.descricao}</p>
-                        <div className="flex items-center gap-3 mt-2 text-xs font-mono text-muted-foreground">
+                        <div className="flex items-center gap-3 mt-3 text-xs font-mono text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {metrics.proximaSessao.hora_inicio} · {metrics.proximaSessao.duracao_minutos}min
@@ -207,13 +263,59 @@ export default function Dashboard() {
                           </span>
                         </div>
                       </div>
-                      <Button size="sm" className="shrink-0" onClick={() => toast.info('Iniciar sessão em breve!')}>
+                      <Button size="sm" className="shrink-0 bg-primary hover:bg-primary/90" onClick={() => toast.info('Iniciar sessão em breve!')}>
                         Iniciar
                       </Button>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">Nenhuma sessão planejada para hoje.</p>
                   )}
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* 3. Engajamento Semanal (Horas Estudadas) */}
+            <motion.div variants={itemVariants}>
+              <Card className="card-famp">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+                    📈 Tendência de Engajamento
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[160px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={MOCK_ENGAGEMENT}>
+                        <XAxis
+                          dataKey="week"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fontSize: 11, fill: 'oklch(0.65 0.015 250)' }}
+                        />
+                        <YAxis hide />
+                        <RechartsTooltip
+                          contentStyle={{
+                            background: 'oklch(0.19 0.025 250)',
+                            border: '1px solid oklch(0.28 0.02 250)',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontFamily: 'var(--font-mono)',
+                          }}
+                          labelStyle={{ color: 'oklch(0.93 0.005 250)' }}
+                          formatter={(value) => `${value}h`}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="hours"
+                          stroke="oklch(0.68 0.12 185)"
+                          strokeWidth={2}
+                          dot={{ fill: 'oklch(0.68 0.12 185)', r: 4 }}
+                          activeDot={{ r: 6 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 text-center">Você está estudando mais a cada semana 🚀</p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -305,6 +407,55 @@ export default function Dashboard() {
 
           {/* Right Column (1/3) */}
           <div className="space-y-5">
+            {/* 2. Próximos Passos */}
+            <motion.div variants={itemVariants}>
+              <Card className="card-famp border-primary/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+                    💡 Próximos Passos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-start gap-3 p-2 rounded-lg bg-primary/5">
+                    <Lightbulb className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium">Quando estiver pronto</p>
+                      <p className="text-[10px] text-muted-foreground">Considere estudar Exame Neurológico</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-2 rounded-lg bg-primary/5">
+                    <BookMarked className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium">Nova playlist</p>
+                      <p className="text-[10px] text-muted-foreground">Seu professor criou uma playlist para o 1º período</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* 6. Achievements/Badges */}
+            <motion.div variants={itemVariants}>
+              <Card className="card-famp">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+                    🏆 Conquistas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {ACHIEVEMENTS.map(achievement => {
+                    const Icon = achievement.icon;
+                    return (
+                      <div key={achievement.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                        <Icon className={`w-4 h-4 ${achievement.color}`} />
+                        <p className="text-xs font-medium">{achievement.title}</p>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            </motion.div>
+
             {/* Recent Sessions */}
             <motion.div variants={itemVariants}>
               <Card className="card-famp">
@@ -358,43 +509,45 @@ export default function Dashboard() {
               </Card>
             </motion.div>
 
-            {/* Announcements */}
-            <motion.div variants={itemVariants}>
-              <Card className="card-famp">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-                      Avisos
-                    </CardTitle>
-                    <span className="text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                      {MOCK_AVISOS.length}
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {MOCK_AVISOS.map(aviso => (
-                    <div key={aviso.id} className="py-2 border-b border-border/50 last:border-0">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
-                          aviso.prioridade === 'alta' || aviso.prioridade === 'urgente'
-                            ? 'text-orange-400'
-                            : 'text-muted-foreground'
-                        }`} />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs font-medium">{aviso.titulo}</p>
-                            <span className={`text-[9px] px-1 py-0.5 rounded border ${getPrioridadeStyle(aviso.prioridade)}`}>
-                              {aviso.prioridade}
-                            </span>
+            {/* 5. Announcements - Simplified */}
+            {avisosImportantes.length > 0 && (
+              <motion.div variants={itemVariants}>
+                <Card className="card-famp">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+                        📢 Avisos Importantes
+                      </CardTitle>
+                      <span className="text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                        {avisosImportantes.length}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {avisosImportantes.map(aviso => (
+                      <div key={aviso.id} className="py-2 border-b border-border/50 last:border-0">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
+                            aviso.prioridade === 'alta' || aviso.prioridade === 'urgente'
+                              ? 'text-orange-400'
+                              : 'text-primary'
+                          }`} />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-medium">{aviso.titulo}</p>
+                              <span className={`text-[9px] px-1 py-0.5 rounded border ${getPrioridadeStyle(aviso.prioridade)}`}>
+                                {aviso.prioridade}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{aviso.conteudo}</p>
                           </div>
-                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{aviso.conteudo}</p>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </motion.div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
         </div>
       </motion.div>
