@@ -135,86 +135,11 @@ function criarDadosExemplo(): {
   const ontemDateStr = addDays(hojeDateStr, -1);
   const anteontemDateStr = addDays(hojeDateStr, -2);
 
-  const tema1: PlannerTema = {
-    id: 'tema-demo-1',
-    semana: 1,
-    area: 'Clínica Médica',
-    especialidade: 'Cardiologia',
-    tema: 'Semiologia Cardiovascular',
-    dataBase: anteontemDateStr,
-    observacoes: 'Foco em ausculta cardíaca e sopros',
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const tema2: PlannerTema = {
-    id: 'tema-demo-2',
-    semana: 1,
-    area: 'Clínica Médica',
-    especialidade: 'Neurologia',
-    tema: 'Exame Neurológico',
-    dataBase: ontemDateStr,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const tema3: PlannerTema = {
-    id: 'tema-demo-3',
-    semana: 2,
-    area: 'Cirurgia',
-    especialidade: 'Cirurgia Geral',
-    tema: 'Abdome Agudo',
-    dataBase: addDays(hojeDateStr, 3),
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const temas = [tema1, tema2, tema3];
-
-  // Etapas
-  const etapas1 = criarEtapasPadrao(tema1.id).map((e, i) => ({
-    ...e,
-    status: (i < 3 ? 'concluido' : 'pendente') as PlannerItemStatus,
-    valor: i < 3 ? (i === 1 ? 15 : undefined) : undefined,
-    completadoEm: i < 3 ? anteontemDateStr : undefined,
-  }));
-  const etapas2 = criarEtapasPadrao(tema2.id).map((e, i) => ({
-    ...e,
-    status: (i < 2 ? 'concluido' : i === 2 ? 'em_andamento' : 'pendente') as PlannerItemStatus,
-    valor: i === 1 ? 10 : undefined,
-    completadoEm: i < 2 ? ontemDateStr : undefined,
-  }));
-  const etapas3 = criarEtapasPadrao(tema3.id);
-
-  const etapas = [...etapas1, ...etapas2, ...etapas3];
-
-  // Revisões
-  const revisoes1 = calcularRevisoes(tema1.id, tema1.dataBase);
-  const revisoes2 = calcularRevisoes(tema2.id, tema2.dataBase);
-  const revisoes3 = calcularRevisoes(tema3.id, tema3.dataBase);
-  const revisoes = [...revisoes1, ...revisoes2, ...revisoes3];
-
-  // Testes aleatórios
-  const testes1 = calcularTestesAleatorios(tema1.id, revisoes1);
-  const testes2 = calcularTestesAleatorios(tema2.id, revisoes2);
-  const testes3 = calcularTestesAleatorios(tema3.id, revisoes3);
-  const testes = [...testes1, ...testes2, ...testes3];
-
-  // Sessão de exemplo
-  const sessoes: PlannerSessao[] = [
-    {
-      id: 'sessao-demo-1',
-      temaId: tema1.id,
-      titulo: 'Semiologia Cardiovascular — Sessão 1',
-      dataInicio: `${anteontemDateStr}T14:00:00`,
-      duracaoMinutos: 90,
-      duracaoReal: 85,
-      status: 'concluida',
-      etapasCompletadas: etapas1.filter((e) => e.status === 'concluido').map((e) => e.id),
-      notas: 'Revisei sopros sistólicos e diastólicos. Dificuldade em diferenciar sopro de Austin Flint.',
-      createdAt: now,
-    },
-  ];
+  const temas: PlannerTema[] = [];
+  const etapas: PlannerEtapa[] = [];
+  const revisoes: PlannerRevisao[] = [];
+  const testes: PlannerTesteAleatorio[] = [];
+  const sessoes: PlannerSessao[] = [];
 
   return { temas, etapas, revisoes, testes, sessoes };
 }
