@@ -124,7 +124,7 @@ const ACHIEVEMENTS = [
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { temas } = usePlannerStore();
+  const { temas, etapas } = usePlannerStore();
   const metrics = MOCK_METRICS;
   const firstName = user?.full_name.split(' ')[0] || 'Estudante';
 
@@ -133,9 +133,16 @@ export default function Dashboard() {
     a.prioridade === 'alta' || a.prioridade === 'urgente' || a.titulo.includes('material')
   );
 
-  // Buscar próxima sessão do Planner (não iniciada)
+  // Buscar próxima sessão do Planner onde NENHUMA etapa foi iniciada
+  // Se qualquer etapa já foi concluída, pular para a próxima sessão
   const proximaSessaoPlanner = temas
-    .filter(t => t.dataBase >= new Date().toISOString().split('T')[0])
+    .filter(t => {
+      if (t.status === 'concluida') return false;
+      // Verificar se NENHUMA etapa deste tema foi concluída
+      const etapasTema = etapas.filter(e => e.temaId === t.id);
+      const algumaConcluida = etapasTema.some(e => e.status === 'concluido');
+      return !algumaConcluida;
+    })
     .sort((a, b) => a.dataBase.localeCompare(b.dataBase))[0];
 
   // Sugerir aula da Library baseado nos temas do Planner

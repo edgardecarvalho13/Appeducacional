@@ -358,6 +358,11 @@ function OverviewView({
                         <h4 className="text-sm font-semibold group-hover:text-primary transition-colors" style={{ fontFamily: 'var(--font-display)' }}>
                           {tema.tema}
                         </h4>
+                        {progresso === 100 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded mt-1">
+                            <CheckCircle2 className="w-3 h-3" /> Sessão Concluída
+                          </span>
+                        )}
                         <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
                           Data base: {formatDate(tema.dataBase)}
                         </p>
@@ -424,6 +429,8 @@ function TemaDetailView({ store, temaId, onBack }: any) {
   const testes = store.getTestesForTema(temaId);
   const [activeTab, setActiveTab] = useState<'etapas' | 'revisoes'>('etapas');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [anotacoes, setAnotacoes] = useState(tema?.anotacoes || '');
+  const [editandoAnotacoes, setEditandoAnotacoes] = useState(false);
 
   if (!tema) return null;
 
@@ -431,10 +438,30 @@ function TemaDetailView({ store, temaId, onBack }: any) {
   const progresso = etapas.length > 0 ? Math.round((concluidas / etapas.length) * 100) : 0;
   const questoesPosCompleta = etapas.some((e: any) => e.tipo === 'questoes_pos' && e.status === 'concluido');
 
+  const podeRemover = !questoesPosCompleta && tema?.status !== 'concluida';
+
   const handleDelete = () => {
-    store.deleteTema(temaId);
+    if (!podeRemover) {
+      toast.error('N\u00e3o \u00e9 poss\u00edvel remover esta sess\u00e3o. As Quest\u00f5es P\u00f3s-Aula j\u00e1 foram conclu\u00eddas.');
+      return;
+    }
+    const deletado = store.deleteTema(temaId);
+    if (!deletado) {
+      toast.error('N\u00e3o \u00e9 poss\u00edvel remover esta sess\u00e3o.');
+      return;
+    }
     toast.success('Tema removido');
     onBack();
+  };
+
+  const handleSaveAnotacoes = () => {
+    const salvo = store.updateAnotacoes(temaId, anotacoes);
+    if (!salvo) {
+      toast.error('Nao pode editar anotacoes de sessao concluida');
+      return;
+    }
+    setEditandoAnotacoes(false);
+    toast.success('Anotacoes salvas');
   };
 
   return (
@@ -445,15 +472,21 @@ function TemaDetailView({ store, temaId, onBack }: any) {
           <ArrowLeft className="w-3 h-3" /> Voltar
         </button>
         <div className="flex gap-2">
-          {showDeleteConfirm ? (
-            <div className="flex gap-1">
-              <Button variant="destructive" size="sm" className="text-xs" onClick={handleDelete}>Confirmar</Button>
-              <Button variant="outline" size="sm" className="text-xs" onClick={() => setShowDeleteConfirm(false)}>Cancelar</Button>
-            </div>
-          ) : (
-            <Button variant="outline" size="sm" className="text-xs gap-1.5 text-red-400 border-red-500/30 hover:bg-red-500/5" onClick={() => setShowDeleteConfirm(true)}>
-              <Trash2 className="w-3.5 h-3.5" /> Remover
-            </Button>
+          {podeRemover ? (
+            showDeleteConfirm ? (
+              <div className="flex gap-1">
+                <Button variant="destructive" size="sm" className="text-xs" onClick={handleDelete}>Confirmar</Button>
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => setShowDeleteConfirm(false)}>Cancelar</Button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" className="text-xs gap-1.5 text-red-400 border-red-500/30 hover:bg-red-500/5" onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 className="w-3.5 h-3.5" /> Remover
+              </Button>
+            )
+          ) : questoesPosCompleta && (
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground bg-muted/30 px-2 py-1 rounded border border-border/50" title="Questões Pós-Aula concluídas — sessão protegida contra exclusão">
+              <Lock className="w-3 h-3" /> Sessão protegida
+            </span>
           )}
         </div>
       </div>
@@ -565,11 +598,17 @@ function TemaDetailView({ store, temaId, onBack }: any) {
                       }`}
                       onClick={() => {
                         store.toggleEtapa(etapa.id);
-                        toast.success(
-                          etapa.status === 'concluido'
-                            ? `${cfg.label} desmarcado`
-                            : `${cfg.label} concluído!`
-                        );
+                        // Se for Questões Pós-Aula e foi concluído, marcar tema como concluído
+                        if (etapa.tipo === 'questoes_pos' && etapa.status !== 'concluido') {
+                          store.marcarComoConcluida(temaId);
+                          toast.success('Sessão de estudo concluída! ✓');
+                        } else {
+                          toast.success(
+                            etapa.status === 'concluido'
+                              ? `${cfg.label} desmarcado`
+                              : `${cfg.label} concluído!`
+                          );
+                        }
                       }}
                     >
                       {etapa.status === 'concluido' ? (
@@ -680,7 +719,54 @@ function TemaDetailView({ store, temaId, onBack }: any) {
         );
       })()}
 
-
+      {/* Card de Anotacoes Pessoais */}
+      <Card className="card-famp">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <StickyNote className="w-4 h-4 text-primary" />
+              Anotacoes Pessoais
+            </h3>
+            {tema.status !== 'concluida' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-6"
+                onClick={() => setEditandoAnotacoes(!editandoAnotacoes)}
+              >
+                {editandoAnotacoes ? <X className="w-3 h-3" /> : <Edit3 className="w-3 h-3" />}
+              </Button>
+            )}
+          </div>
+          {editandoAnotacoes && tema.status !== 'concluida' ? (
+            <div className="space-y-2">
+              <textarea
+                value={anotacoes}
+                onChange={(e) => setAnotacoes(e.target.value)}
+                placeholder="Adicione anotacoes pessoais sobre este tema..."
+                className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                rows={3}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => setEditandoAnotacoes(false)}>Cancelar</Button>
+                <Button size="sm" className="text-xs" onClick={handleSaveAnotacoes}><Save className="w-3 h-3 mr-1" /> Salvar</Button>
+              </div>
+            </div>
+          ) : (
+            <p className={`text-sm ${anotacoes ? 'text-foreground' : 'text-muted-foreground/60'} whitespace-pre-wrap`}>
+              {anotacoes || 'Nenhuma anotacao adicionada ainda'}
+            </p>
+          )}
+          {tema.status === 'concluida' && (
+            <div className="mt-2 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
+              <p className="text-xs text-emerald-400 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3 h-3" />
+                Sessao concluida - anotacoes bloqueadas
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

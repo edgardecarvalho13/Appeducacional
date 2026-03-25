@@ -218,14 +218,14 @@ export function usePlannerStore() {
 
   // ─── CRUD: Temas ───
   const addTema = useCallback(
-    (input: Omit<PlannerTema, 'id' | 'createdAt' | 'updatedAt'>) => {
+    (input: Omit<PlannerTema, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
       // Impedir duplicidade
       if (data.temas.some(t => t.area === input.area && t.especialidade === input.especialidade && t.tema === input.tema)) {
         return null; // Tema já existe
       }
 
       const now = new Date().toISOString();
-      const tema: PlannerTema = { ...input, id: generateId(), createdAt: now, updatedAt: now };
+      const tema: PlannerTema = { ...input, id: generateId(), status: 'planejada', createdAt: now, updatedAt: now };
       const etapas = criarEtapasPadrao(tema.id);
       const revisoes = calcularRevisoes(tema.id, tema.dataBase);
       const testes = calcularTestesAleatorios(tema.id, revisoes);
@@ -245,10 +245,20 @@ export function usePlannerStore() {
 
   const updateTema = useCallback(
     (id: string, updates: Partial<PlannerTema>) => {
+      // Se marcando como concluída, registrar timestamp
+      const finalUpdates = { ...updates };
+      if (updates.status === 'concluida' && !updates.concluidaEm) {
+        finalUpdates.concluidaEm = new Date().toISOString();
+      }
+      // Se marcando como iniciada, registrar timestamp
+      if (updates.status === 'iniciada' && !updates.iniciadaEm) {
+        finalUpdates.iniciadaEm = new Date().toISOString();
+      }
+      
       setData((prev) => ({
         ...prev,
         temas: prev.temas.map((t) =>
-          t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
+          t.id === id ? { ...t, ...finalUpdates, updatedAt: new Date().toISOString() } : t
         ),
       }));
     },
@@ -256,14 +266,29 @@ export function usePlannerStore() {
   );
 
   const deleteTema = useCallback((id: string) => {
+    // Nao permitir deletar tema concluido
+    const tema = data.temas.find(t => t.id === id);
+    if (tema?.status === 'concluida') {
+      return false; // Nao pode deletar tema concluido
+    }
+    
+    // Nao permitir deletar se Questões Pós-Aula estiver concluída
+    const etapasTema = data.etapas.filter(e => e.temaId === id);
+    const questoesPosAula = etapasTema.find(e => e.tipo === 'questoes_pos');
+    if (questoesPosAula?.status === 'concluido') {
+      return false; // Nao pode deletar - questoes pos aula ja concluida
+    }
+    
     setData((prev) => ({
+      ...prev,
       temas: prev.temas.filter((t) => t.id !== id),
       etapas: prev.etapas.filter((e) => e.temaId !== id),
       revisoes: prev.revisoes.filter((r) => r.temaId !== id),
       testes: prev.testes.filter((t) => t.temaId !== id),
       sessoes: prev.sessoes.filter((s) => s.temaId !== id),
     }));
-  }, []);
+    return true;
+  }, [data.temas, data.etapas]);
 
   // ─── CRUD: Etapas ───
   const updateEtapa = useCallback(
@@ -286,6 +311,25 @@ export function usePlannerStore() {
       ),
     }));
   }, []);
+
+  const updateAnotacoes = useCallback(
+    (id: string, anotacoes: string) => {
+      const tema = data.temas.find(t => t.id === id);
+      if (tema?.status === 'concluida') {
+        return false; // Nao pode editar anotacoes de tema concluido
+      }
+      updateTema(id, { anotacoes });
+      return true;
+    },
+    [data.temas, updateTema]
+  );
+
+  const marcarComoConcluida = useCallback(
+    (id: string) => {
+      updateTema(id, { status: 'concluida' });
+    },
+    [updateTema]
+  );
 
   const toggleEtapa = useCallback((id: string) => {
     setData((prev) => ({
@@ -557,6 +601,8 @@ export function usePlannerStore() {
     completeTeste,
     startSessao,
     completeSessao,
+    updateAnotacoes,
+    marcarComoConcluida,
 
     // Computed
     getTemasForWeek,

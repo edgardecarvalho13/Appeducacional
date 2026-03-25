@@ -220,6 +220,10 @@ export interface PlannerTema {
   tema: string;           // Tema da aula
   dataBase: string;       // ISO date — dia do estudo/aula
   observacoes?: string;
+  anotacoes?: string;     // Anotações pessoais do aluno
+  status: 'planejada' | 'iniciada' | 'concluida'; // Status da sessão
+  iniciadaEm?: string;    // ISO date — quando foi iniciada
+  concluidaEm?: string;   // ISO date — quando foi concluída
   createdAt: string;
   updatedAt: string;
 }
