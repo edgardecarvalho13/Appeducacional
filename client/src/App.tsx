@@ -17,13 +17,13 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import AccessDenied from "./pages/AccessDenied";
 import {
-  PlannerPage,
   FlashcardsPage,
   TurmasPage,
   AvisosPage,
   ENAMEDPage,
   InternatoPage,
 } from "./pages/ModulePlaceholder";
+import PlannerPage from "./pages/PlannerPage";
 import BibliotecaPage from "./pages/BibliotecaPage";
 import QuestPage from "./pages/QuestPage";
 import TutorPage from "./pages/TutorPage";

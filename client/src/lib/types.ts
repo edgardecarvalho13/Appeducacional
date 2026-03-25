@@ -206,6 +206,69 @@ export interface ModuleShortcut {
 }
 
 // ============================================================
+// Planner — Motor de Estudo
+// ============================================================
+export type PlannerItemStatus = 'pendente' | 'em_andamento' | 'concluido' | 'atrasado' | 'pulado';
+export type EtapaEstudo = 'estudo_teorico' | 'questoes_pre' | 'aula' | 'flashcards' | 'questoes_pos';
+export type RevisaoTipo = 'R1' | 'R2' | 'R3' | 'R4' | 'R5' | 'R6' | 'R7' | 'R8' | 'R9' | 'R10';
+
+export interface PlannerTema {
+  id: string;
+  semana: number;
+  area: string;           // Grande Área
+  especialidade: string;
+  tema: string;           // Tema da aula
+  dataBase: string;       // ISO date — dia do estudo/aula
+  observacoes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlannerEtapa {
+  id: string;
+  temaId: string;
+  tipo: EtapaEstudo;
+  status: PlannerItemStatus;
+  valor?: number;         // Questões respondidas, páginas lidas, etc.
+  notas?: string;
+  completadoEm?: string;
+}
+
+export interface PlannerRevisao {
+  id: string;
+  temaId: string;
+  tipo: RevisaoTipo;
+  dataAgendada: string;   // ISO date — calculada automaticamente
+  status: PlannerItemStatus;
+  tecnicaUsada?: string;  // 'questoes' | 'flashcards' | 'resumo' | 'mapa_mental'
+  valor?: number;         // Questões feitas na revisão
+  completadoEm?: string;
+}
+
+export interface PlannerTesteAleatorio {
+  id: string;
+  temaId: string;
+  numero: number;         // TA1=1, TA2=2, TA3=3...
+  dataAgendada: string;   // ISO date — entre revisões, mín 3 dias
+  status: PlannerItemStatus;
+  questoesFeitas?: number;
+  completadoEm?: string;
+}
+
+export interface PlannerSessao {
+  id: string;
+  temaId: string;
+  titulo: string;
+  dataInicio: string;
+  duracaoMinutos: number; // Padrão 90
+  duracaoReal?: number;
+  status: SessionStatus;
+  etapasCompletadas: string[]; // IDs das etapas
+  notas?: string;
+  createdAt: string;
+}
+
+// ============================================================
 // Video Watch Analytics (para coordenador)
 // ============================================================
 export interface VideoCompletionRecord {
