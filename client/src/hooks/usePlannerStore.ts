@@ -314,14 +314,10 @@ export function usePlannerStore() {
 
   const updateAnotacoes = useCallback(
     (id: string, anotacoes: string) => {
-      const tema = data.temas.find(t => t.id === id);
-      if (tema?.status === 'concluida') {
-        return false; // Nao pode editar anotacoes de tema concluido
-      }
       updateTema(id, { anotacoes });
       return true;
     },
-    [data.temas, updateTema]
+    [updateTema]
   );
 
   const marcarComoConcluida = useCallback(

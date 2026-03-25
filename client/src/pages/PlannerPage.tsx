@@ -104,6 +104,17 @@ export default function PlannerPage() {
   const [selectedTemaId, setSelectedTemaId] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 
+  // Deep-link: se URL tiver ?tema=ID, abrir direto na sessão
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const temaParam = params.get('tema');
+    if (temaParam && store.temas.some(t => t.id === temaParam)) {
+      setSelectedTemaId(temaParam);
+      setView('tema_detail');
+      // Limpar o query param da URL sem recarregar
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []); // eslint-disable-line
 
   const stats = store.getStats();
   const weeks = store.getWeeks();
@@ -455,13 +466,8 @@ function TemaDetailView({ store, temaId, onBack }: any) {
   };
 
   const handleSaveAnotacoes = () => {
-    const salvo = store.updateAnotacoes(temaId, anotacoes);
-    if (!salvo) {
-      toast.error('Nao pode editar anotacoes de sessao concluida');
-      return;
-    }
-    setEditandoAnotacoes(false);
-    toast.success('Anotacoes salvas');
+    store.updateAnotacoes(temaId, anotacoes);
+    toast.success('Anotações salvas');
   };
 
   return (
@@ -719,52 +725,29 @@ function TemaDetailView({ store, temaId, onBack }: any) {
         );
       })()}
 
-      {/* Card de Anotacoes Pessoais */}
+      {/* Card de Anotacoes Pessoais — sempre aberto */}
       <Card className="card-famp">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <StickyNote className="w-4 h-4 text-primary" />
-              Anotacoes Pessoais
+              Anotações Pessoais
             </h3>
-            {tema.status !== 'concluida' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs h-6"
-                onClick={() => setEditandoAnotacoes(!editandoAnotacoes)}
-              >
-                {editandoAnotacoes ? <X className="w-3 h-3" /> : <Edit3 className="w-3 h-3" />}
-              </Button>
-            )}
           </div>
-          {editandoAnotacoes && tema.status !== 'concluida' ? (
-            <div className="space-y-2">
-              <textarea
-                value={anotacoes}
-                onChange={(e) => setAnotacoes(e.target.value)}
-                placeholder="Adicione anotacoes pessoais sobre este tema..."
-                className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                rows={3}
-              />
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" size="sm" className="text-xs" onClick={() => setEditandoAnotacoes(false)}>Cancelar</Button>
-                <Button size="sm" className="text-xs" onClick={handleSaveAnotacoes}><Save className="w-3 h-3 mr-1" /> Salvar</Button>
-              </div>
+          <div className="space-y-2">
+            <textarea
+              value={anotacoes}
+              onChange={(e) => setAnotacoes(e.target.value)}
+              placeholder="Adicione anotações pessoais sobre este tema..."
+              className="w-full rounded-md border border-border bg-input px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-y min-h-[80px]"
+              rows={4}
+            />
+            <div className="flex justify-end">
+              <Button size="sm" className="text-xs" onClick={handleSaveAnotacoes}>
+                <Save className="w-3 h-3 mr-1" /> Salvar
+              </Button>
             </div>
-          ) : (
-            <p className={`text-sm ${anotacoes ? 'text-foreground' : 'text-muted-foreground/60'} whitespace-pre-wrap`}>
-              {anotacoes || 'Nenhuma anotacao adicionada ainda'}
-            </p>
-          )}
-          {tema.status === 'concluida' && (
-            <div className="mt-2 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
-              <p className="text-xs text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle2 className="w-3 h-3" />
-                Sessao concluida - anotacoes bloqueadas
-              </p>
-            </div>
-          )}
+          </div>
         </CardContent>
       </Card>
     </div>

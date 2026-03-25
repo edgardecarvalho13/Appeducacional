@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { toast } from 'sonner';
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Cell } from 'recharts';
 import { motion } from 'framer-motion';
 
 const HERO_BG = 'https://d2xsxph8kpxj0f.cloudfront.net/310419663031165931/GTVSswVQbMzxsTPY394qoU/famp-hero-banner-9LKT2Zp2VHhNFi5wzX4RWR.webp';
@@ -107,13 +107,7 @@ function getPrioridadeStyle(p: string) {
   }
 }
 
-// Mock data para engajamento semanal (horas estudadas)
-const MOCK_ENGAGEMENT = [
-  { week: 'Sem 1', hours: 4.5 },
-  { week: 'Sem 2', hours: 5.2 },
-  { week: 'Sem 3', hours: 6.1 },
-  { week: 'Sem 4', hours: 7.3 },
-];
+
 
 // Mock achievements/badges
 const ACHIEVEMENTS = [
@@ -286,9 +280,9 @@ export default function Dashboard() {
                           </span>
                         </div>
                       </div>
-                      <Link href="/planner">
+                      <Link href={`/planner?tema=${proximaSessaoPlanner.id}`}>
                         <Button size="sm" className="shrink-0 bg-primary hover:bg-primary/90">
-                          Ir ao Planner
+                          Ir para Sessão
                         </Button>
                       </Link>
                     </div>
@@ -299,48 +293,83 @@ export default function Dashboard() {
               </Card>
             </motion.div>
 
-            {/* 3. Engajamento Semanal (Horas Estudadas) */}
+            {/* 3. Trilhas de Aprendizagem da FAMP Library */}
             <motion.div variants={itemVariants}>
               <Card className="card-famp">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-                    📈 Tendência de Engajamento
-                  </CardTitle>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+                      🎬 Trilhas de Aprendizagem
+                    </CardTitle>
+                    <Link href="/library">
+                      <span className="text-xs text-primary hover:underline flex items-center gap-1">
+                        Ver todas <ChevronRight className="w-3 h-3" />
+                      </span>
+                    </Link>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[160px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={MOCK_ENGAGEMENT}>
-                        <XAxis
-                          dataKey="week"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 11, fill: 'oklch(0.65 0.015 250)' }}
-                        />
-                        <YAxis hide />
-                        <RechartsTooltip
-                          contentStyle={{
-                            background: 'oklch(0.19 0.025 250)',
-                            border: '1px solid oklch(0.28 0.02 250)',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontFamily: 'var(--font-mono)',
-                          }}
-                          labelStyle={{ color: 'oklch(0.93 0.005 250)' }}
-                          formatter={(value) => `${value}h`}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="hours"
-                          stroke="oklch(0.68 0.12 185)"
-                          strokeWidth={2}
-                          dot={{ fill: 'oklch(0.68 0.12 185)', r: 4 }}
-                          activeDot={{ r: 6 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(VIDEOS.trilhas as any[]).slice(0, 4).map((trilha: any) => {
+                      const videoCount = trilha.videos?.length || 0;
+                      const h = Math.floor(trilha.duracao / 60);
+                      const m = trilha.duracao % 60;
+                      const duracaoStr = h > 0 ? `${h}h ${m}min` : `${m}min`;
+                      return (
+                        <Link key={trilha.id} href="/library">
+                          <div className="group p-3 rounded-lg border border-border/50 bg-muted/20 hover:bg-primary/5 hover:border-primary/30 transition-all cursor-pointer">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-8 h-8 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
+                                <BookOpen className="w-4 h-4 text-primary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-xs font-semibold truncate group-hover:text-primary transition-colors">{trilha.titulo}</h4>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground line-clamp-2 mb-2">{trilha.descricao}</p>
+                            <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Play className="w-2.5 h-2.5" /> {videoCount} vídeos
+                              </span>
+                              <span>·</span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5" /> {duracaoStr}
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2 text-center">Você está estudando mais a cada semana 🚀</p>
+
+                  {/* Vídeos Recentes */}
+                  <div className="mt-4">
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Vídeos em Destaque</h4>
+                    <div className="space-y-2">
+                      {(VIDEOS.videos as any[]).slice(0, 3).map((video: any) => (
+                        <Link key={video.id} href="/library">
+                          <div className="group flex items-center gap-3 p-2 rounded-lg hover:bg-primary/5 transition-colors cursor-pointer">
+                            <div className="relative w-16 h-10 rounded overflow-hidden bg-muted/50 shrink-0">
+                              <img
+                                src={`https://img.youtube.com/vi/${video.youtubeId}/mqdefault.jpg`}
+                                alt={video.title}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/10 transition-colors">
+                                <Play className="w-3 h-3 text-white" />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate group-hover:text-primary transition-colors">{video.title}</p>
+                              <p className="text-[10px] text-muted-foreground font-mono">
+                                {video.especialidade} · {video.duration}min
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
