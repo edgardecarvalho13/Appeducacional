@@ -119,16 +119,16 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="dark" switchable>
         <AuthProvider>
           <TooltipProvider>
             <Toaster
               position="top-right"
               toastOptions={{
                 style: {
-                  background: 'oklch(0.19 0.025 250)',
-                  border: '1px solid oklch(0.28 0.02 250)',
-                  color: 'oklch(0.93 0.005 250)',
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--card-foreground)',
                 },
               }}
             />

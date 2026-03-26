@@ -26,7 +26,10 @@ import {
   Users,
   Stethoscope,
   Building2,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -64,6 +67,7 @@ export default function Sidebar() {
   const [expanded, setExpanded] = useState(true);
   const [location] = useLocation();
   const { user, logout, hasRole } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const handleNavClick = (item: NavItem, e: React.MouseEvent) => {
     if (item.status === 'coming_soon') {
@@ -243,6 +247,20 @@ export default function Sidebar() {
 
         {/* Actions */}
         <div className={cn('px-2 pb-2 flex', expanded ? 'gap-1' : 'flex-col gap-1')}>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleTheme}
+                className="flex-1 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 transition-colors"
+              >
+                {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={expanded ? 'top' : 'right'} className="text-xs">
+              {theme === 'dark' ? 'Tema Claro' : 'Tema Escuro'}
+            </TooltipContent>
+          </Tooltip>
+
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <button

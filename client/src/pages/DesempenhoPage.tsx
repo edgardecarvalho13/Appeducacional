@@ -274,9 +274,9 @@ export default function DesempenhoPage() {
                     </h4>
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={areaData.slice(0, 8)} layout="vertical" margin={{ left: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.28 0.02 250)" />
-                        <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                        <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                        <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
                         <Tooltip content={<CustomTooltip />} />
                         <Bar dataKey="taxa" name="Taxa (%)" fill="#2dd4bf" radius={[0, 4, 4, 0]} />
                       </BarChart>
@@ -293,9 +293,9 @@ export default function DesempenhoPage() {
                     </h4>
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={difficultyData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.28 0.02 250)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                        <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                        <YAxis tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
                         <Tooltip content={<CustomTooltip />} />
                         <Bar dataKey="acertos" name="Acertos" stackId="a" fill="#4ade80" radius={[0, 0, 0, 0]} />
                         <Bar dataKey="erros" name="Erros" stackId="a" fill="#f87171" radius={[4, 4, 0, 0]} />
@@ -313,9 +313,9 @@ export default function DesempenhoPage() {
                     </h4>
                     <ResponsiveContainer width="100%" height={220}>
                       <RadarChart data={bloomData}>
-                        <PolarGrid stroke="oklch(0.28 0.02 250)" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 8, fill: '#64748b' }} />
+                        <PolarGrid stroke="var(--border)" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 8, fill: 'var(--muted-foreground)' }} />
                         <Radar name="Taxa (%)" dataKey="taxa" stroke="#2dd4bf" fill="#2dd4bf" fillOpacity={0.2} />
                         <Tooltip content={<CustomTooltip />} />
                       </RadarChart>
@@ -338,9 +338,9 @@ export default function DesempenhoPage() {
                     <>
                       <ResponsiveContainer width="100%" height={Math.max(300, areaData.length * 40)}>
                         <BarChart data={areaData} layout="vertical" margin={{ left: 10 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.28 0.02 250)" />
-                          <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                          <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                          <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                          <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
                           <Tooltip content={<CustomTooltip />} />
                           <Legend formatter={(v: string) => <span className="text-xs text-muted-foreground">{v}</span>} />
                           <Bar dataKey="acertos" name="Acertos" stackId="a" fill="#4ade80" />
@@ -400,9 +400,9 @@ export default function DesempenhoPage() {
                     <>
                       <ResponsiveContainer width="100%" height={Math.max(300, subareaData.length * 35)}>
                         <BarChart data={subareaData} layout="vertical" margin={{ left: 10 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.28 0.02 250)" />
-                          <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                          <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                          <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                          <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
                           <Tooltip content={<CustomTooltip />} />
                           <Legend formatter={(v: string) => <span className="text-xs text-muted-foreground">{v}</span>} />
                           <Bar dataKey="acertos" name="Acertos" stackId="a" fill="#4ade80" />
@@ -457,9 +457,9 @@ export default function DesempenhoPage() {
                     </h4>
                     <ResponsiveContainer width="100%" height={250}>
                       <BarChart data={difficultyData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.28 0.02 250)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                        <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                        <YAxis tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend formatter={(v: string) => <span className="text-xs text-muted-foreground">{v}</span>} />
                         <Bar dataKey="acertos" name="Acertos" fill="#4ade80" radius={[4, 4, 0, 0]} />
@@ -521,9 +521,9 @@ export default function DesempenhoPage() {
                     </h4>
                     <ResponsiveContainer width="100%" height={300}>
                       <RadarChart data={bloomData}>
-                        <PolarGrid stroke="oklch(0.28 0.02 250)" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 8, fill: '#64748b' }} />
+                        <PolarGrid stroke="var(--border)" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 8, fill: 'var(--muted-foreground)' }} />
                         <Radar name="Taxa (%)" dataKey="taxa" stroke="#2dd4bf" fill="#2dd4bf" fillOpacity={0.3} />
                         <Tooltip content={<CustomTooltip />} />
                       </RadarChart>
@@ -576,9 +576,9 @@ export default function DesempenhoPage() {
                   </h4>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={timelineData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.28 0.02 250)" />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                      <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                      <YAxis tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
                       <Tooltip content={<CustomTooltip />} />
                       <Legend formatter={(v: string) => <span className="text-xs text-muted-foreground">{v}</span>} />
                       <Line

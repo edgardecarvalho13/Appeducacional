@@ -6,6 +6,7 @@
  */
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { usePlannerStore } from '@/hooks/usePlannerStore';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -390,27 +391,27 @@ export default function Dashboard() {
                           dataKey="day"
                           axisLine={false}
                           tickLine={false}
-                          tick={{ fontSize: 11, fill: 'oklch(0.65 0.015 250)' }}
+                          tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                         />
                         <YAxis hide />
                         <RechartsTooltip
                           contentStyle={{
-                            background: 'oklch(0.19 0.025 250)',
-                            border: '1px solid oklch(0.28 0.02 250)',
+                            background: 'var(--card)',
+                            border: '1px solid var(--border)',
                             borderRadius: '6px',
                             fontSize: '12px',
                             fontFamily: 'var(--font-mono)',
                           }}
-                          labelStyle={{ color: 'oklch(0.93 0.005 250)' }}
+                          labelStyle={{ color: 'var(--card-foreground)' }}
                         />
                         <Bar dataKey="questoes" name="Total" radius={[3, 3, 0, 0]} maxBarSize={28}>
                           {MOCK_WEEKLY_PERFORMANCE.map((_, i) => (
-                            <Cell key={i} fill="oklch(0.28 0.02 250)" />
+                            <Cell key={i} fill="var(--border)" />
                           ))}
                         </Bar>
                         <Bar dataKey="acertos" name="Acertos" radius={[3, 3, 0, 0]} maxBarSize={28}>
                           {MOCK_WEEKLY_PERFORMANCE.map((_, i) => (
-                            <Cell key={i} fill="oklch(0.68 0.12 185)" />
+                            <Cell key={i} fill="var(--primary)" />
                           ))}
                         </Bar>
                       </BarChart>
