@@ -537,6 +537,54 @@ export function usePlannerStore() {
     return Array.from(areas).sort();
   }, [data.temas]);
 
+  // ─── Compartilhamento de Plano ───
+  const shares: Record<string, any> = {};
+
+  const generateShareCode = useCallback((): string => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }, []);
+
+  const createPlanShare = useCallback(
+    (temaIds: string[], titulo: string, descricao?: string, isPublic: boolean = true) => {
+      const shareCode = generateShareCode();
+      const share = {
+        id: generateId(),
+        shareCode,
+        ownerAlunoId: 'current-user-id', // Será preenchido pelo componente
+        ownerNome: 'Aluno', // Será preenchido pelo componente
+        temaIds,
+        titulo,
+        descricao,
+        isPublic,
+        createdAt: new Date().toISOString(),
+      };
+      shares[shareCode] = share;
+      return share;
+    },
+    [generateShareCode]
+  );
+
+  const getSharedPlan = useCallback(
+    (shareCode: string) => {
+      return shares[shareCode] || null;
+    },
+    []
+  );
+
+  const getSharedTemas = useCallback(
+    (shareCode: string) => {
+      const share = shares[shareCode];
+      if (!share) return [];
+      return data.temas.filter((t) => share.temaIds.includes(t.id));
+    },
+    [data.temas]
+  );
+
   // Timeline: todas as atividades ordenadas por data
   const getTimeline = useCallback(() => {
     const items: Array<{
@@ -611,5 +659,10 @@ export function usePlannerStore() {
     getWeeks,
     getAreas,
     getTimeline,
+
+    // Compartilhamento
+    createPlanShare,
+    getSharedPlan,
+    getSharedTemas,
   };
 }

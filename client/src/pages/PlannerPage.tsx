@@ -46,9 +46,11 @@ import {
   ExternalLink,
   Link2,
   Lock,
+  Share2,
 } from 'lucide-react';
 import { usePlannerStore } from '@/hooks/usePlannerStore';
 import type { PlannerItemStatus, EtapaEstudo } from '@/lib/types';
+import { SharePlanModal } from '@/components/SharePlanModal';
 import { toast } from 'sonner';
 import {
   PLANO_ENSINO,
@@ -431,7 +433,7 @@ function OverviewView({
 }
 
 // ═══════════════════════════════════════════════════════════════
-// TEMA DETAIL VIEW
+// CREATE TEMA VIEW
 // ═══════════════════════════════════════════════════════════════
 function TemaDetailView({ store, temaId, onBack }: any) {
   const tema = store.temas.find((t: any) => t.id === temaId);
@@ -442,6 +444,8 @@ function TemaDetailView({ store, temaId, onBack }: any) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [anotacoes, setAnotacoes] = useState(tema?.anotacoes || '');
   const [editandoAnotacoes, setEditandoAnotacoes] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareCode, setShareCode] = useState<string | null>(null);
 
   if (!tema) return null;
 
@@ -470,6 +474,11 @@ function TemaDetailView({ store, temaId, onBack }: any) {
     toast.success('Anotações salvas');
   };
 
+  const handleShareClose = () => {
+    setShowShareModal(false);
+    setShareCode(null);
+  };
+
   return (
     <div className="p-5 max-w-5xl mx-auto space-y-5">
       {/* Header */}
@@ -478,6 +487,13 @@ function TemaDetailView({ store, temaId, onBack }: any) {
           <ArrowLeft className="w-3 h-3" /> Voltar
         </button>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => {
+            const share = store.createPlanShare([temaId], `${tema.tema} — ${tema.especialidade}`, tema.observacoes);
+            setShareCode(share.shareCode);
+            setShowShareModal(true);
+          }}>
+            <Share2 className="w-3.5 h-3.5" /> Compartilhar
+          </Button>
           {podeRemover ? (
             showDeleteConfirm ? (
               <div className="flex gap-1">
@@ -750,6 +766,18 @@ function TemaDetailView({ store, temaId, onBack }: any) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Share Modal */}
+      {shareCode && (
+        <SharePlanModal
+          open={showShareModal}
+          onOpenChange={handleShareClose}
+          shareCode={shareCode}
+          titulo={`${tema.tema} — ${tema.especialidade}`}
+          ownerNome="Você"
+          temaCount={1}
+        />
+      )}
     </div>
   );
 }

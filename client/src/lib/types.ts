@@ -288,6 +288,22 @@ export interface VideoCompletionRecord {
 }
 
 // ============================================================
+// Compartilhamento de Plano de Estudo
+// ============================================================
+export interface PlannerShare {
+  id: string;                    // ID único do compartilhamento
+  shareCode: string;             // Código curto para URL (ex: ABC123)
+  ownerAlunoId: string;          // ID do aluno que compartilhou
+  ownerNome: string;             // Nome do aluno que compartilhou
+  temaIds: string[];             // IDs dos temas compartilhados
+  titulo: string;                // Título do plano (ex: "Plano de Clínica Médica")
+  descricao?: string;            // Descrição opcional
+  isPublic: boolean;             // Se é público ou apenas para colegas
+  createdAt: string;
+  expiresAt?: string;            // Data de expiração (opcional)
+}
+
+// ============================================================
 // Notificações internas do app
 // ============================================================
 export interface AppNotification {
