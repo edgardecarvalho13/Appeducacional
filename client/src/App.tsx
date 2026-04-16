@@ -34,79 +34,53 @@ function Router() {
   return (
     <Switch>
       {/* Public routes */}
-      <Route path="/" component={() => <Redirect to="/login" />} />
+      <Route path="/" component={() => <Redirect to="/dashboard" />} />
       <Route path="/login" component={Login} />
       <Route path="/acesso-negado" component={AccessDenied} />
 
-      {/* Protected: All authenticated users */}
+      {/* All authenticated users - sem ProtectedRoute para demo */}
       <Route path="/dashboard">
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
+        <Dashboard />
       </Route>
 
-      {/* Protected: Student modules */}
+      {/* Student modules - sem ProtectedRoute para demo */}
       <Route path="/planner">
-        <ProtectedRoute>
-          <PlannerPage />
-        </ProtectedRoute>
+        <PlannerPage />
       </Route>
       <Route path="/quest">
-        <ProtectedRoute>
-          <QuestPage />
-        </ProtectedRoute>
+        <QuestPage />
       </Route>
       <Route path="/tutor">
-        <ProtectedRoute>
-          <TutorPage />
-        </ProtectedRoute>
+        <TutorPage />
       </Route>
       <Route path="/library">
-        <ProtectedRoute>
-          <BibliotecaPage />
-        </ProtectedRoute>
+        <BibliotecaPage />
       </Route>
       <Route path="/caderno-erros">
-        <ProtectedRoute>
-          <CadernoErrosPage />
-        </ProtectedRoute>
+        <CadernoErrosPage />
       </Route>
       <Route path="/desempenho">
-        <ProtectedRoute>
-          <DesempenhoPage />
-        </ProtectedRoute>
+        <DesempenhoPage />
       </Route>
       <Route path="/flashcards">
-        <ProtectedRoute>
-          <FlashcardsPage />
-        </ProtectedRoute>
+        <FlashcardsPage />
       </Route>
       <Route path="/enamed">
-        <ProtectedRoute>
-          <ENAMEDPage />
-        </ProtectedRoute>
+        <ENAMEDPage />
       </Route>
       <Route path="/internato">
-        <ProtectedRoute>
-          <InternatoPage />
-        </ProtectedRoute>
+        <InternatoPage />
       </Route>
 
-      {/* Protected: Coordination & Admin only */}
+      {/* Coordination & Admin - sem ProtectedRoute para demo */}
       <Route path="/analytics">
-        <ProtectedRoute allowedRoles={['coordenacao', 'admin']}>
-          <DesempenhoPage />
-        </ProtectedRoute>
+        <DesempenhoPage />
       </Route>
       <Route path="/turmas">
-        <ProtectedRoute allowedRoles={['coordenacao', 'admin', 'professor']}>
-          <TurmasPage />
-        </ProtectedRoute>
+        <TurmasPage />
       </Route>
       <Route path="/avisos">
-        <ProtectedRoute allowedRoles={['coordenacao', 'admin']}>
-          <AvisosPage />
-        </ProtectedRoute>
+        <AvisosPage />
       </Route>
 
       {/* Fallback */}
