@@ -27,8 +27,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'famp_auth_user';
 
-// Supabase está sempre configurado (credenciais hardcoded como fallback)
-const SUPABASE_CONFIGURED = true;
+// Usar mock auth em vez de Supabase para desenvolvimento
+const SUPABASE_CONFIGURED = false;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
@@ -206,13 +206,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // Login mock (fallback quando Supabase não está configurado)
-  async function loginWithMock(email: string, _password: string): Promise<{ success: boolean; error?: string }> {
+  async function loginWithMock(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     await new Promise(resolve => setTimeout(resolve, 800));
+
+    // Verificar senha
+    if (password !== '12345') {
+      return { success: false, error: 'Senha incorreta. Use 12345 para todas as contas.' };
+    }
 
     const user = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user) {
-      return { success: false, error: 'E-mail não encontrado. Use um e-mail institucional @famp.edu.br' };
+      return { success: false, error: 'E-mail não encontrado. Use um dos e-mails de demonstração.' };
     }
 
     if (!user.is_active) {
